@@ -45,8 +45,9 @@ npm run typecheck
 npm test                                  # Vitest + Testing Library
 npm run gen:api                           # regenera src/lib/api-schema.d.ts (backend en marcha)
 
-# infra/<stack>/
+# infra/<stack>/   (pasos completos en infra/README.md)
 terraform fmt -recursive && terraform validate
+terraform init -backend=false             # para validar sin credenciales ni backend
 ```
 
 ## Convenciones del backend
@@ -75,6 +76,14 @@ terraform fmt -recursive && terraform validate
 - Estado en la URL: el Sheet de tarea se abre con `?task=<id>` / `?task=new&task_status=<id>` y los filtros de la lista son `q`, `status`, `priority`, `sort`, `page`.
 - Las pantallas de tareas se cargan con `lazy` en `routes/router.tsx`; `RouteError` cubre errores de ruta (p. ej. chunks viejos tras un deploy).
 - Añadir componentes con `npx shadcn@latest add <nombre>`; no editar a mano `components/ui/` salvo necesidad.
+
+## Convenciones de infraestructura
+
+- `bootstrap` (state local): bucket del state + rol OIDC (solo la confianza). Sus permisos los adjunta `main/github.tf` con los ARN exactos.
+- Secretos con `ephemeral "random_password"` + argumentos write-only (`password_wo`, `value_wo`); se rotan subiendo `*_version`. Nunca `random_password` normal para secretos.
+- Scripts que corren en Linux (`*.sh`, `*.tftpl`) siempre con LF (`.gitattributes`).
+- La EC2 es ARM (`t4g`) por defecto: la imagen del backend se construye para `linux/arm64`.
+- Tras cambiar proveedores: `terraform providers lock -platform=linux_amd64 -platform=darwin_arm64 -platform=windows_amd64 ...`.
 
 ## Flujo de trabajo
 

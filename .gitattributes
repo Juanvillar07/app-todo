@@ -1,0 +1,5 @@
+* text=auto
+# Scripts que se ejecutan en Linux (EC2, contenedores): siempre LF, también en Windows.
+*.sh text eol=lf
+*.tftpl text eol=lf
+Dockerfile text eol=lf

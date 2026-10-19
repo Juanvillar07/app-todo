@@ -1,0 +1,7 @@
+# Copia a terraform.tfvars (ignorado por git) y ajusta.
+region            = "us-east-1"
+project           = "todo"
+github_repository = "tu-usuario/app-todo"
+
+# Pon false si tu cuenta ya tiene el proveedor OIDC de token.actions.githubusercontent.com.
+create_github_oidc_provider = true

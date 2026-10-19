@@ -1,0 +1,20 @@
+#!/bin/bash
+# Se ejecuta una sola vez, al crear la instancia: instala Docker y deja listo /opt/todo/deploy.sh.
+# El backend no arranca hasta el primer deploy (GitHub Actions → SSM → deploy.sh <tag>).
+set -euo pipefail
+
+dnf install -y docker
+systemctl enable --now docker
+
+install -d -m 0755 /opt/todo
+
+cat > /opt/todo/config <<'CONFIG'
+AWS_REGION=${region}
+ECR_REGISTRY=${ecr_registry}
+ECR_REPO_URL=${ecr_repo_url}
+SSM_PREFIX=${ssm_prefix}
+LOG_GROUP=${log_group}
+CONFIG
+
+echo '${deploy_sh}' | base64 -d > /opt/todo/deploy.sh
+chmod 0755 /opt/todo/deploy.sh

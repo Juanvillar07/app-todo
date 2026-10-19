@@ -1,0 +1,13 @@
+# Copia a terraform.tfvars (ignorado por git) y ajusta.
+region           = "us-east-1"
+project          = "todo"
+environment      = "prod"
+github_role_name = "todo-github-deploy" # output github_role_name de infra/bootstrap
+
+# t4g = ARM (Graviton). Si cambias a t3.small, pon architecture = "x86_64".
+instance_type = "t4g.small"
+architecture  = "arm64"
+
+# Alarmas de CPU y presupuesto por email (vacío = desactivadas).
+alert_email        = ""
+monthly_budget_usd = 40

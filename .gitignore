@@ -33,3 +33,5 @@ tfplan
 .idea/
 .DS_Store
 Thumbs.db
+# Configuración local del backend de Terraform (ver backend.hcl.example)
+backend.hcl

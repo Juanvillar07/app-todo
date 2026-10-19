@@ -40,7 +40,10 @@ uv run ruff check . && uv run ruff format .
 npm install
 npm run dev                               # http://localhost:5173, proxy /api -> :8000
 npm run build
-npm run lint
+npm run lint                              # oxlint
+npm run typecheck
+npm test                                  # Vitest + Testing Library
+npm run gen:api                           # regenera src/lib/api-schema.d.ts (backend en marcha)
 
 # infra/<stack>/
 terraform fmt -recursive && terraform validate
@@ -60,12 +63,15 @@ terraform fmt -recursive && terraform validate
 ## Convenciones del frontend — UI limpia y minimalista
 
 - Paleta neutra (grises de shadcn) con **un solo color de acento**. El color se reserva para significado: prioridad (urgente rojo, alta naranja, media azul, baja gris) y el color de cada estado.
-- Mucho espacio en blanco, jerarquía por tamaño y peso tipográfico, no por cajas ni colores. Tipografía Inter o la del sistema.
+- Mucho espacio en blanco, jerarquía por tamaño y peso tipográfico, no por cajas ni colores. Tipografía Geist (preset Nova de shadcn, base neutral).
 - Sin sombras marcadas, gradientes ni bordes gruesos; bordes finos y sutiles solo donde separan contenido.
 - Componentes de shadcn/ui tal cual, sin decoración extra. Iconos `lucide-react` pequeños y solo cuando aportan.
 - Pocas acciones visibles a la vez; las secundarias en menús o al pasar el cursor. Estados vacíos breves y útiles.
 - Soporte de modo claro y oscuro.
-- Llamadas a la API con TanStack Query desde `lib/api.ts`; formularios con React Hook Form + Zod.
+- Llamadas a la API con TanStack Query usando el cliente tipado `api` + `unwrap()` de `lib/api.ts` (openapi-fetch). Tras cambiar la API, `npm run gen:api` y commit del `.d.ts`.
+- Formularios con React Hook Form + Zod y los componentes `Field*` de shadcn.
+- Sesión: `useAuth()` (`features/auth`). Tema: `useTheme()` de `components/theme-context` (sin next-themes).
+- Añadir componentes con `npx shadcn@latest add <nombre>`; no editar a mano `components/ui/` salvo necesidad.
 
 ## Flujo de trabajo
 

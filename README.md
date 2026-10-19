@@ -9,4 +9,6 @@ cp .env.example .env
 docker compose up -d db
 ```
 
-Backend: `docker compose --profile backend up --build` y abre http://localhost:8000/api/docs. El frontend llega en la fase 3.
+Backend: `docker compose --profile backend up --build` (API en http://localhost:8000/api/docs).
+
+Frontend: `cd frontend && npm install && npm run dev` y abre http://localhost:5173.

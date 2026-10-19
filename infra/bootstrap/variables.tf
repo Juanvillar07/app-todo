@@ -20,6 +20,23 @@ variable "github_repository" {
   }
 }
 
+variable "github_owner_id" {
+  description = "ID numérico del dueño del repo (GitHub API: owner.id). GitHub incluye estos IDs inmutables en el 'sub' del token OIDC."
+  type        = string
+  default     = ""
+}
+
+variable "github_repository_id" {
+  description = "ID numérico del repo (GitHub API: id). Vacío junto con github_owner_id = solo se acepta el formato de 'sub' sin IDs."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = (var.github_repository_id == "") == (var.github_owner_id == "")
+    error_message = "Define github_owner_id y github_repository_id juntos (o ninguno)."
+  }
+}
+
 variable "github_branch" {
   description = "Única rama desde la que los workflows pueden asumir el rol."
   type        = string

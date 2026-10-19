@@ -105,6 +105,17 @@ locals {
     ? aws_iam_openid_connect_provider.github[0].arn
     : data.aws_iam_openid_connect_provider.github[0].arn
   )
+
+  # GitHub puede enviar el 'sub' con IDs inmutables del dueño y del repo:
+  #   repo:owner@<owner_id>/repo@<repo_id>:ref:refs/heads/main
+  # Se acepta ese formato (y el clásico sin IDs). Con IDs, un repo nuevo con el mismo nombre
+  # (tras borrar o renombrar el original) no podría asumir el rol.
+  github_owner = split("/", var.github_repository)[0]
+  github_repo  = split("/", var.github_repository)[1]
+  github_subjects = compact([
+    "repo:${var.github_repository}:ref:refs/heads/${var.github_branch}",
+    var.github_repository_id == "" ? "" : "repo:${local.github_owner}@${var.github_owner_id}/${local.github_repo}@${var.github_repository_id}:ref:refs/heads/${var.github_branch}",
+  ])
 }
 
 data "aws_iam_policy_document" "github_trust" {
@@ -123,7 +134,7 @@ data "aws_iam_policy_document" "github_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:ref:refs/heads/${var.github_branch}"]
+      values   = local.github_subjects
     }
   }
 }

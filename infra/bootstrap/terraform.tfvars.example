@@ -1,7 +1,13 @@
 # Copia a terraform.tfvars (ignorado por git) y ajusta.
 region            = "us-east-1"
 project           = "todo"
-github_repository = "tu-usuario/app-todo"
+github_repository = "Juanvillar07/app-todo"
 
-# Pon false si tu cuenta ya tiene el proveedor OIDC de token.actions.githubusercontent.com.
+# IDs numéricos del dueño y del repo; GitHub los incluye en el 'sub' del token OIDC.
+# Obtenlos con:  curl -s https://api.github.com/repos/<owner>/<repo>   (campos owner.id e id)
+github_owner_id      = "111154475"
+github_repository_id = "1425026088"
+
+# Pon false si tu cuenta ya tiene el proveedor OIDC de token.actions.githubusercontent.com
+# (compruébalo con: aws iam list-open-id-connect-providers).
 create_github_oidc_provider = true

@@ -22,6 +22,19 @@ variable "github_role_name" {
   default     = "todo-github-deploy"
 }
 
+# --- Dominio propio ---
+
+variable "custom_domain" {
+  description = "Subdominio propio para la app, p. ej. \"tareas.midominio.com\". Vacío = solo la URL *.cloudfront.net."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.custom_domain == "" || can(regex("^[a-z0-9-]+(\\.[a-z0-9-]+){2,}$", var.custom_domain))
+    error_message = "Usa un subdominio en minúsculas, como \"tareas.midominio.com\" (sin https:// ni barra final)."
+  }
+}
+
 # --- Red ---
 
 variable "vpc_cidr" {

@@ -83,6 +83,7 @@ terraform init -backend=false             # para validar sin credenciales ni bac
 - Secretos con `ephemeral "random_password"` + argumentos write-only (`password_wo`, `value_wo`); se rotan subiendo `*_version`. Nunca `random_password` normal para secretos.
 - Scripts que corren en Linux (`*.sh`, `*.tftpl`) siempre con LF (`.gitattributes`).
 - La EC2 es ARM (`t4g`) por defecto: la imagen del backend se construye para `linux/arm64`.
+- Dominio propio: `custom_domain` (subdominio, DNS en GoDaddy). Certificado ACM con el provider `aws.us_east_1`; los CNAME se crean a mano a partir de `terraform output dns_records`.
 - Tras cambiar proveedores: `terraform providers lock -platform=linux_amd64 -platform=darwin_arm64 -platform=windows_amd64 ...`.
 
 ## Flujo de trabajo

@@ -54,6 +54,26 @@ Después del apply:
 - `terraform output github_variables` da los valores de las variables del repo en GitHub (Fase 6).
 - Hasta el primer despliegue, `/api/*` responde 502 (no hay contenedor) y la raíz no tiene frontend: es normal.
 
+## Dominio propio (DNS en GoDaddy u otro proveedor)
+
+La app puede servirse en un subdominio propio (por ejemplo `app.flowtareas.online`) sin mover el DNS a AWS: Terraform pide un certificado gratuito a ACM y tú creas dos CNAME en tu proveedor. La raíz del dominio (`flowtareas.online`) no es posible así, porque GoDaddy no permite apuntarla a CloudFront; para eso habría que usar Route 53.
+
+1. En `main/terraform.tfvars`: `custom_domain = "app.flowtareas.online"`.
+2. `terraform plan` debe mostrar `2 to add, 1 to change, 0 to destroy` (certificado, su validación y CloudFront actualizado *in-place*). Si algo se destruye o reemplaza, no apliques.
+3. Pide solo el certificado y obtén los registros DNS:
+
+   ```bash
+   terraform apply -target=aws_acm_certificate.app     # en PowerShell: terraform apply '-target=aws_acm_certificate.app'
+   terraform output dns_records
+   ```
+
+4. En GoDaddy (*Mis productos → dominio → DNS → Agregar nuevo registro*), crea el **primer** registro: tipo `CNAME`, nombre = `host` (sin añadir el dominio, GoDaddy lo pone solo), valor = `value`. No lo borres nunca: ACM lo usa para renovar el certificado.
+5. `terraform apply`: espera a que ACM valide (5–30 min, máximo 2 h) y actualiza CloudFront (5–15 min). `terraform output certificate_status` pasa de `PENDING_VALIDATION` a `ISSUED`.
+6. Crea el **segundo** registro: `CNAME`, nombre = el subdominio (`app`), valor = el dominio de CloudFront (`terraform output cloudfront_url`, sin `https://`).
+7. Comprueba con `nslookup app.flowtareas.online` y abre `https://app.flowtareas.online`. La URL `*.cloudfront.net` sigue funcionando y en GitHub no hay que cambiar nada.
+
+Para quitar el dominio: borra el segundo CNAME en GoDaddy, deja `custom_domain = ""` y aplica.
+
 ## Operación
 
 ```bash

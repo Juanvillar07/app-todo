@@ -35,6 +35,21 @@ provider "aws" {
   }
 }
 
+# Los certificados que usa CloudFront tienen que estar en us-east-1.
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+
+  default_tags {
+    tags = {
+      Project     = var.project
+      Environment = var.environment
+      Stack       = "main"
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 

@@ -118,6 +118,7 @@ resource "aws_cloudfront_distribution" "main" {
   http_version        = "http2and3"
   is_ipv6_enabled     = true
   price_class         = "PriceClass_100" # Norteamérica y Europa: lo más barato
+  aliases             = local.use_custom_domain ? [var.custom_domain] : []
 
   origin {
     origin_id                = local.s3_origin_id
@@ -172,7 +173,11 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
+  # Con dominio propio: certificado de ACM ya validado. Sin él: el certificado *.cloudfront.net.
   viewer_certificate {
-    cloudfront_default_certificate = true
+    cloudfront_default_certificate = !local.use_custom_domain
+    acm_certificate_arn            = local.use_custom_domain ? aws_acm_certificate_validation.app[0].certificate_arn : null
+    ssl_support_method             = local.use_custom_domain ? "sni-only" : null
+    minimum_protocol_version       = local.use_custom_domain ? "TLSv1.2_2021" : null
   }
 }

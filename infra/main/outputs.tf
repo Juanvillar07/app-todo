@@ -1,6 +1,21 @@
 output "app_url" {
-  description = "URL pública de la app."
+  description = "URL pública de la app (el dominio propio si está configurado)."
+  value       = "https://${local.use_custom_domain ? var.custom_domain : aws_cloudfront_distribution.main.domain_name}"
+}
+
+output "cloudfront_url" {
+  description = "URL de CloudFront; sigue funcionando aunque haya dominio propio."
   value       = "https://${aws_cloudfront_distribution.main.domain_name}"
+}
+
+output "dns_records" {
+  description = "Registros CNAME que hay que crear en el proveedor DNS (GoDaddy) para el dominio propio."
+  value       = local.dns_records
+}
+
+output "certificate_status" {
+  description = "Estado del certificado en ACM: PENDING_VALIDATION hasta que exista el CNAME de validación, luego ISSUED."
+  value       = local.use_custom_domain ? aws_acm_certificate.app[0].status : null
 }
 
 # --- Variables del repo en GitHub (Settings → Secrets and variables → Actions → Variables) ---

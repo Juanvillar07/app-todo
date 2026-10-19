@@ -11,3 +11,7 @@ architecture  = "arm64"
 # Alarmas de CPU y presupuesto por email (vacío = desactivadas).
 alert_email        = ""
 monthly_budget_usd = 40
+
+# Dominio propio en un subdominio, con el DNS fuera de AWS (p. ej. GoDaddy).
+# Vacío = solo la URL *.cloudfront.net. Pasos en infra/README.md ("Dominio propio").
+custom_domain = ""

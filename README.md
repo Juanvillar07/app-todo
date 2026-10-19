@@ -9,4 +9,4 @@ cp .env.example .env
 docker compose up -d db
 ```
 
-El backend y el frontend se añaden en las fases 1 y 3.
+Backend: `docker compose --profile backend up --build` y abre http://localhost:8000/api/docs. El frontend llega en la fase 3.

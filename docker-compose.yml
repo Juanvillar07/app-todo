@@ -22,7 +22,7 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-todo}:${POSTGRES_PASSWORD:-todo}@db:5432/${POSTGRES_DB:-todo}
-      JWT_SECRET: ${JWT_SECRET:-dev-secret}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-cambia-esto-en-produccion-0123456789}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
     ports:

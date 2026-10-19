@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { AuthLayout } from './auth-layout'
 import { useAuth } from './auth-context'
 import { FormError } from './form-error'
+import { PasswordInput } from './password-input'
 import { type LoginValues, loginSchema } from './schemas'
 
 export function LoginPage() {
@@ -59,9 +60,8 @@ export function LoginPage() {
           </Field>
           <Field data-invalid={!!errors.password}>
             <FieldLabel htmlFor="password">Contraseña</FieldLabel>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               autoComplete="current-password"
               aria-invalid={!!errors.password}
               {...form.register('password')}

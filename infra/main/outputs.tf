@@ -1,6 +1,11 @@
 output "app_url" {
   description = "URL pública de la app."
-  value       = "https://${aws_cloudfront_distribution.main.domain_name}"
+  value       = "https://${local.has_domain ? var.domain_name : aws_cloudfront_distribution.main.domain_name}"
+}
+
+output "name_servers" {
+  description = "Nameservers de la zona de Route 53: van en el registrador del dominio (GoDaddy)."
+  value       = flatten(aws_route53_zone.main[*].name_servers)
 }
 
 # --- Variables del repo en GitHub (Settings → Secrets and variables → Actions → Variables) ---

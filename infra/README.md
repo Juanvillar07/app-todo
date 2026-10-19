@@ -5,7 +5,7 @@ Dos stacks que se aplican **a mano** desde tu máquina; el pipeline solo desplie
 | Stack | State | Qué crea |
 | --- | --- | --- |
 | `bootstrap/` | local (`bootstrap/terraform.tfstate`) | Bucket S3 del state de `main` y rol IAM que asume GitHub Actions por OIDC (solo desde `main` de tu repo) |
-| `main/` | remoto, en el bucket anterior (`use_lockfile`) | VPC, EC2 + Elastic IP, RDS PostgreSQL 16, ECR, SSM Parameter Store, S3 + CloudFront, CloudWatch, presupuesto y los permisos del rol de GitHub |
+| `main/` | remoto, en el bucket anterior (`use_lockfile`) | VPC, EC2 + Elastic IP, RDS PostgreSQL 16, ECR, SSM Parameter Store, S3 + CloudFront, CloudWatch, presupuesto, los permisos del rol de GitHub y, opcionalmente, el dominio propio (Route 53 + ACM) |
 
 ```
 Usuario ──HTTPS──▶ CloudFront ──/*──────▶ S3 (frontend, privado vía OAC)
@@ -54,6 +54,37 @@ Después del apply:
 - `terraform output github_variables` da los valores de las variables del repo en GitHub (Fase 6).
 - Hasta el primer despliegue, `/api/*` responde 502 (no hay contenedor) y la raíz no tiene frontend: es normal.
 
+## 3. Dominio propio (opcional)
+
+Con `domain_name` en `terraform.tfvars`, `main` crea una zona de Route 53, un certificado de ACM (en us-east-1, gratis y con renovación automática) y los registros hacia CloudFront. La app queda en el dominio raíz y `www` redirige a él. El dominio `*.cloudfront.net` sigue funcionando y no hace falta redesplegar nada.
+
+El certificado solo se emite cuando el registrador ya delega en Route 53, así que se aplica en dos pasos:
+
+```bash
+cd infra/main
+terraform plan                                   # con domain_name = "" solo cambia aws_cloudfront_function.spa_rewrite
+
+# 1. Pon domain_name = "tudominio.com" en terraform.tfvars y crea solo la zona
+terraform apply -target=aws_route53_zone.main    # en PowerShell: terraform apply '-target=aws_route53_zone.main'
+terraform output name_servers
+```
+
+2. En el registrador cambia los nameservers por los cuatro de `name_servers` (sin el punto final). En GoDaddy: *Mis productos → el dominio → DNS → Nameservers → Cambiar → Usaré mis propios servidores de nombres*. Si DNSSEC está activo, desactívalo antes. Comprueba la delegación (de minutos a unas horas):
+
+   ```bash
+   nslookup -type=NS tudominio.com 8.8.8.8          # debe devolver los ns-*.awsdns-*
+   ```
+
+3. Aplica el resto (certificado, validación, CloudFront y registros; 10–20 min):
+
+   ```bash
+   terraform plan -out tfplan
+   terraform apply tfplan
+   terraform output app_url
+   ```
+
+> Si el apply se queda esperando en `aws_acm_certificate_validation`, la delegación todavía no ha propagado: espera y vuelve a aplicar.
+
 ## Operación
 
 ```bash
@@ -74,7 +105,7 @@ sudo /opt/todo/deploy.sh <sha-del-commit>
 
 ## Costos y limpieza
 
-Con tráfico bajo, el gasto viene casi todo de lo que corre 24/7: EC2 `t4g.small`, RDS `db.t4g.micro` (+20 GB gp3) y la IPv4 pública. Calcula unos 30–35 USD/mes en `us-east-1`; revísalo en la [calculadora de AWS](https://calculator.aws/). CloudFront, S3, ECR y SSM cuestan céntimos.
+Con tráfico bajo, el gasto viene casi todo de lo que corre 24/7: EC2 `t4g.small`, RDS `db.t4g.micro` (+20 GB gp3) y la IPv4 pública. Calcula unos 30–35 USD/mes en `us-east-1`; revísalo en la [calculadora de AWS](https://calculator.aws/). CloudFront, S3, ECR y SSM cuestan céntimos. Con dominio propio, la zona de Route 53 suma unos 0,50 USD/mes.
 
 Cuando no la uses:
 

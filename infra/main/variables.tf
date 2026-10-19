@@ -103,3 +103,16 @@ variable "log_retention_days" {
   type    = number
   default = 14
 }
+
+# --- Dominio propio ---
+
+variable "domain_name" {
+  description = "Dominio raíz de la app (p. ej. flowtareas.online); www redirige a él. Vacío = solo el dominio *.cloudfront.net."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.domain_name == "" || can(regex("^([a-z0-9-]+[.])+[a-z]{2,}$", var.domain_name))
+    error_message = "domain_name debe ser un dominio en minúsculas sin protocolo ni www (p. ej. flowtareas.online), o vacío."
+  }
+}

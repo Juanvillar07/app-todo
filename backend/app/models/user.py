@@ -1,12 +1,9 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
-from sqlalchemy import Column, DateTime
 from sqlmodel import Field, SQLModel
 
-
-def utcnow() -> datetime:
-    return datetime.now(UTC)
+from app.models.common import timestamp_column, utcnow
 
 
 class User(SQLModel, table=True):
@@ -15,6 +12,4 @@ class User(SQLModel, table=True):
     full_name: str | None = Field(default=None, max_length=255)
     hashed_password: str
     is_active: bool = True
-    created_at: datetime = Field(
-        default_factory=utcnow, sa_column=Column(DateTime(timezone=True), nullable=False)
-    )
+    created_at: datetime = Field(default_factory=utcnow, sa_column=timestamp_column())

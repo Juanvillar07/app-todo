@@ -72,8 +72,18 @@ def login(client: TestClient, email: str = "ana@example.com", password: str = "s
     return client.post("/api/auth/login", data={"username": email, "password": password})
 
 
+def make_headers(client: TestClient, email: str) -> dict[str, str]:
+    register(client, email=email)
+    token = login(client, email=email).json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
 @pytest.fixture
 def auth_headers(client: TestClient) -> dict[str, str]:
-    register(client)
-    token = login(client).json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+    return make_headers(client, "ana@example.com")
+
+
+@pytest.fixture
+def other_headers(client: TestClient) -> dict[str, str]:
+    """Un segundo usuario, para comprobar el aislamiento."""
+    return make_headers(client, "beto@example.com")

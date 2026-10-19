@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 from app.core.security import DUMMY_HASH, hash_password, verify_password
 from app.models import User
 from app.schemas.user import UserCreate
+from app.services.statuses import add_default_statuses
 
 
 def get_by_email(session: Session, email: str) -> User | None:
@@ -16,6 +17,8 @@ def create_user(session: Session, data: UserCreate) -> User:
         hashed_password=hash_password(data.password),
     )
     session.add(user)
+    session.flush()  # inserta el usuario antes que sus estados (FK)
+    add_default_statuses(session, user)
     session.commit()
     session.refresh(user)
     return user

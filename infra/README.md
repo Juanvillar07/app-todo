@@ -32,7 +32,9 @@ terraform output
 
 Anota `state_bucket` y `github_role_name`. Guarda una copia de `bootstrap/terraform.tfstate` en un lugar seguro: no se sube a git y lo necesitas para modificar o destruir este stack.
 
-> Si la cuenta ya tiene el proveedor OIDC de GitHub, pon `create_github_oidc_provider = false`.
+> Si la cuenta ya tiene el proveedor OIDC de GitHub, pon `create_github_oidc_provider = false` (si no, el apply falla con `EntityAlreadyExists`). Compruébalo con `aws iam list-open-id-connect-providers`.
+>
+> Si `aws sts get-caller-identity` da `InvalidClientTokenId`, tu perfil por defecto tiene una clave inválida: usa otro perfil con `$env:AWS_PROFILE = "<perfil>"` (PowerShell) o `export AWS_PROFILE=<perfil>` (bash).
 
 ## 2. Main
 
@@ -40,7 +42,7 @@ Anota `state_bucket` y `github_role_name`. Guarda una copia de `bootstrap/terraf
 cd infra/main
 cp backend.hcl.example backend.hcl             # bucket = <state_bucket>
 cp terraform.tfvars.example terraform.tfvars   # revisa región, tipo de instancia y alert_email
-terraform init -backend-config=backend.hcl
+terraform init -backend-config=backend.hcl     # en PowerShell: terraform init '-backend-config=backend.hcl'
 terraform plan -out tfplan
 terraform apply tfplan                         # 10–15 min (RDS y CloudFront son lentos)
 terraform output

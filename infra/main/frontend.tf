@@ -1,5 +1,6 @@
 # Un solo dominio: CloudFront sirve el frontend desde S3 y reenvía /api/* a la EC2.
-# Así hay HTTPS sin certificado propio y el navegador no necesita CORS.
+# Así el navegador no necesita CORS. HTTPS con el certificado de CloudFront o, con
+# domain_name, con el de ACM para el dominio propio (dns.tf).
 
 resource "aws_s3_bucket" "frontend" {
   bucket        = "${local.name}-frontend-${local.account_id}"
@@ -118,6 +119,7 @@ resource "aws_cloudfront_distribution" "main" {
   http_version        = "http2and3"
   is_ipv6_enabled     = true
   price_class         = "PriceClass_100" # Norteamérica y Europa: lo más barato
+  aliases             = local.domains
 
   origin {
     origin_id                = local.s3_origin_id
@@ -172,7 +174,11 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
 
+  # Sin dominio propio: certificado *.cloudfront.net (TLSv1 es lo único que admite).
   viewer_certificate {
-    cloudfront_default_certificate = true
+    cloudfront_default_certificate = !local.has_domain
+    acm_certificate_arn            = one(aws_acm_certificate_validation.main[*].certificate_arn)
+    ssl_support_method             = local.has_domain ? "sni-only" : null
+    minimum_protocol_version       = local.has_domain ? "TLSv1.2_2021" : "TLSv1"
   }
 }

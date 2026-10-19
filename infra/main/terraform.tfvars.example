@@ -11,3 +11,6 @@ architecture  = "arm64"
 # Alarmas de CPU y presupuesto por email (vacío = desactivadas).
 alert_email        = ""
 monthly_budget_usd = 40
+
+# Dominio propio (Route 53 + ACM). Vacío = solo *.cloudfront.net. Pasos en infra/README.md.
+domain_name = ""

@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Un push nuevo al PR cancela la ejecución anterior.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (ruff, pytest, docker build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: todo
+          POSTGRES_PASSWORD: todo
+          POSTGRES_DB: todo
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U todo -d todo"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      # conftest.py crea y migra esta BD en el Postgres del servicio.
+      TEST_DATABASE_URL: postgresql+psycopg://todo:todo@localhost:5432/todo_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest
+      - name: Construir la imagen (sin publicarla)
+        run: docker build --tag todo-backend:ci .
+
+  frontend:
+    name: Frontend (lint, tsc, vitest, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  api-types:
+    name: Tipos de la API al día
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Exportar el OpenAPI del backend
+        working-directory: backend
+        env:
+          # Solo para importar la app: no se conecta a ninguna BD.
+          DATABASE_URL: postgresql+psycopg://ci:ci@localhost:5432/ci
+          JWT_SECRET: ci-secret-que-no-se-usa-para-nada-real
+        run: |
+          uv sync --locked --no-dev
+          uv run python -c "import json; from app.main import app; print(json.dumps(app.openapi()))" > "$RUNNER_TEMP/openapi.json"
+      - name: Regenerar src/lib/api-schema.d.ts y comparar
+        working-directory: frontend
+        run: |
+          npx -y openapi-typescript@7.13.0 "$RUNNER_TEMP/openapi.json" --default-non-nullable false -o src/lib/api-schema.d.ts
+          if ! git diff --exit-code -- src/lib/api-schema.d.ts; then
+            echo "::error::src/lib/api-schema.d.ts no coincide con la API. Ejecuta 'npm run gen:api' con el backend en marcha y haz commit."
+            exit 1
+          fi
+
+  infra:
+    name: Terraform (fmt, validate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.6
+      - run: terraform fmt -check -recursive infra
+      - name: Validar stacks
+        run: |
+          for stack in infra/bootstrap infra/main; do
+            echo "::group::$stack"
+            terraform -chdir="$stack" init -backend=false -input=false
+            terraform -chdir="$stack" validate
+            echo "::endgroup::"
+          done

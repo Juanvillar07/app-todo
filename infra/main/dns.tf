@@ -26,20 +26,21 @@ resource "aws_acm_certificate" "main" {
   }
 }
 
-resource "aws_route53_record" "cert_validation" {
-  for_each = {
-    for dvo in flatten(aws_acm_certificate.main[*].domain_validation_options) : dvo.domain_name => {
-      name   = dvo.resource_record_name
-      type   = dvo.resource_record_type
-      record = dvo.resource_record_value
-    }
+locals {
+  cert_validation = {
+    for dvo in flatten(aws_acm_certificate.main[*].domain_validation_options) : dvo.domain_name => dvo
   }
+}
+
+# Claves fijas (los dominios): los datos del registro de validación solo se conocen tras crear el certificado.
+resource "aws_route53_record" "cert_validation" {
+  for_each = toset(local.domains)
 
   zone_id         = aws_route53_zone.main[0].zone_id
-  name            = each.value.name
-  type            = each.value.type
+  name            = local.cert_validation[each.key].resource_record_name
+  type            = local.cert_validation[each.key].resource_record_type
   ttl             = 300
-  records         = [each.value.record]
+  records         = [local.cert_validation[each.key].resource_record_value]
   allow_overwrite = true
 }
 

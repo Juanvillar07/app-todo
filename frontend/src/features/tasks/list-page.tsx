@@ -168,7 +168,7 @@ export function ListPage() {
             <>
               Ninguna tarea coincide con los filtros.{' '}
               <button
-                className="font-medium text-foreground underline-offset-4 hover:underline"
+                className="font-medium text-primary underline-offset-4 hover:underline"
                 onClick={() => {
                   clearTimeout(searchTimer.current)
                   setSearch('')
@@ -182,7 +182,7 @@ export function ListPage() {
             <>
               Aún no tienes tareas.{' '}
               <button
-                className="font-medium text-foreground underline-offset-4 hover:underline"
+                className="font-medium text-primary underline-offset-4 hover:underline"
                 onClick={() => sheet.openNew()}
               >
                 Crea la primera
@@ -193,7 +193,10 @@ export function ListPage() {
       ) : (
         <>
           <ul
-            className={cn('divide-y border-y', tasks.isPlaceholderData && 'opacity-60')}
+            className={cn(
+              'divide-y overflow-hidden rounded-lg border bg-card shadow-xs',
+              tasks.isPlaceholderData && 'opacity-60',
+            )}
             aria-label="Tareas"
           >
             {tasks.data?.items.map((task) => {
@@ -203,7 +206,7 @@ export function ListPage() {
                   <button
                     type="button"
                     onClick={() => sheet.openTask(task.id)}
-                    className="grid w-full grid-cols-[1fr_auto] items-center gap-4 px-2 py-3 text-left text-sm transition-colors hover:bg-muted/50 sm:grid-cols-[1fr_9rem_5rem_5.5rem]"
+                    className="grid w-full grid-cols-[1fr_auto] items-center gap-4 px-4 py-3 text-left text-sm transition-colors hover:bg-muted/50 sm:grid-cols-[1fr_9rem_5rem_5.5rem]"
                   >
                     <span
                       className={cn(

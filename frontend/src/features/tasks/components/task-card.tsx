@@ -18,7 +18,7 @@ export function TaskCardContent({
   return (
     <div
       className={cn(
-        'rounded-lg border bg-card p-3 text-sm transition-colors hover:border-foreground/20',
+        'rounded-lg border bg-card p-3 text-sm shadow-xs transition-[border-color,box-shadow] hover:border-primary/30 hover:shadow-sm',
         className,
       )}
     >

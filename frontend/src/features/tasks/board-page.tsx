@@ -243,7 +243,7 @@ function BoardColumn({
             <button
               type="button"
               onClick={onAdd}
-              className="rounded-lg border border-dashed px-3 py-6 text-xs text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+              className="rounded-lg border border-dashed px-3 py-6 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
             >
               Sin tareas
             </button>

@@ -63,9 +63,10 @@ terraform init -backend=false             # para validar sin credenciales ni bac
 
 ## Convenciones del frontend — UI limpia y minimalista
 
-- Paleta neutra (grises de shadcn) con **un solo color de acento**. El color se reserva para significado: prioridad (urgente rojo, alta naranja, media azul, baja gris) y el color de cada estado.
+- Estilo inspirado en Stripe, sin copiarlo: texto azul marino, grises azulados y **un solo color de acento** índigo-violeta (`primary`) para botones, enlaces y la navegación activa. El resto del color se reserva para significado: prioridad (urgente rojo, alta naranja, media azul, baja gris) y el color de cada estado.
+- Lienzo gris (`bg-canvas`) en el área de contenido y en login/registro; encima, superficies blancas (`bg-card`) para tarjetas, lista y formularios.
 - Mucho espacio en blanco, jerarquía por tamaño y peso tipográfico, no por cajas ni colores. Tipografía Geist (preset Nova de shadcn, base neutral).
-- Sin sombras marcadas, gradientes ni bordes gruesos; bordes finos y sutiles solo donde separan contenido.
+- Sin sombras marcadas ni bordes gruesos: como mucho `shadow-xs`/`shadow-sm` en superficies blancas, bordes finos y sutiles. El único degradado es la banda diagonal del acento en login/registro (`AuthLayout`).
 - Componentes de shadcn/ui tal cual, sin decoración extra. Iconos `lucide-react` pequeños y solo cuando aportan.
 - Pocas acciones visibles a la vez; las secundarias en menús o al pasar el cursor. Estados vacíos breves y útiles.
 - Soporte de modo claro y oscuro.

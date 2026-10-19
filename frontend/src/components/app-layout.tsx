@@ -33,8 +33,8 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
           onClick={onNavigate}
           className={({ isActive }) =>
             cn(
-              'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground',
-              isActive && 'bg-muted font-medium text-foreground',
+              'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+              isActive && 'bg-primary/10 font-medium text-primary hover:bg-primary/10 hover:text-primary',
             )
           }
         >
@@ -55,7 +55,7 @@ function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm hover:bg-muted">
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium uppercase">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary uppercase">
             {name.charAt(0)}
           </span>
           <span className="truncate">{name}</span>
@@ -95,12 +95,13 @@ export function AppLayout() {
 
   return (
     <div className="flex min-h-svh">
-      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 border-r md:block">
+      <aside className="sticky top-0 hidden h-svh w-60 shrink-0 border-r bg-sidebar md:block">
         <SidebarContent />
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-2 border-b px-4 py-3 md:hidden">
+      {/* Lienzo gris con superficies blancas encima (tarjetas, lista). */}
+      <div className="flex min-w-0 flex-1 flex-col bg-canvas">
+        <header className="flex items-center gap-2 border-b bg-background px-4 py-3 md:hidden">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon-sm" aria-label="Abrir menú">

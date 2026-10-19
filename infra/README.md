@@ -60,14 +60,16 @@ La app puede servirse en un subdominio propio (por ejemplo `app.flowtareas.onlin
 
 1. En `main/terraform.tfvars`: `custom_domain = "app.flowtareas.online"`.
 2. `terraform plan` debe mostrar `2 to add, 1 to change, 0 to destroy` (certificado, su validación y CloudFront actualizado *in-place*). Si algo se destruye o reemplaza, no apliques.
-3. Pide solo el certificado y obtén los registros DNS:
+3. Pide solo el certificado y lee su registro de validación. Con `-target`, Terraform no guarda el output `dns_records` (depende también de CloudFront), así que se consulta a ACM:
 
    ```bash
    terraform apply -target=aws_acm_certificate.app     # en PowerShell: terraform apply '-target=aws_acm_certificate.app'
-   terraform output dns_records
+   aws acm describe-certificate --region us-east-1 \
+     --certificate-arn "$(aws acm list-certificates --region us-east-1 --query "CertificateSummaryList[?DomainName=='app.flowtareas.online'].CertificateArn | [0]" --output text)" \
+     --query "Certificate.DomainValidationOptions[0].ResourceRecord"
    ```
 
-4. En GoDaddy (*Mis productos → dominio → DNS → Agregar nuevo registro*), crea el **primer** registro: tipo `CNAME`, nombre = `host` (sin añadir el dominio, GoDaddy lo pone solo), valor = `value`. No lo borres nunca: ACM lo usa para renovar el certificado.
+4. En GoDaddy (*Mis productos → dominio → DNS → Agregar nuevo registro*), crea ese registro: tipo `CNAME`, nombre = `Name` sin el dominio final (p. ej. `_9dcd….app`; GoDaddy lo añade solo), valor = `Value` sin el punto final. No lo borres nunca: ACM lo usa para renovar el certificado. Tras el apply completo, `terraform output dns_records` muestra ambos registros ya en este formato.
 5. `terraform apply`: espera a que ACM valide (5–30 min, máximo 2 h) y actualiza CloudFront (5–15 min). `terraform output certificate_status` pasa de `PENDING_VALIDATION` a `ISSUED`.
 6. Crea el **segundo** registro: `CNAME`, nombre = el subdominio (`app`), valor = el dominio de CloudFront (`terraform output cloudfront_url`, sin `https://`).
 7. Comprueba con `nslookup app.flowtareas.online` y abre `https://app.flowtareas.online`. La URL `*.cloudfront.net` sigue funcionando y en GitHub no hay que cambiar nada.

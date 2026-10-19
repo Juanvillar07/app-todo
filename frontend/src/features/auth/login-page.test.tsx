@@ -36,6 +36,18 @@ describe('LoginPage', () => {
     expect(await screen.findByText('lista')).toBeInTheDocument()
   })
 
+  it('muestra y oculta la contraseña', async () => {
+    renderRoutes(routes, '/login', fakeAuth())
+    const password = screen.getByLabelText('Contraseña')
+    expect(password).toHaveAttribute('type', 'password')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mostrar contraseña' }))
+    expect(password).toHaveAttribute('type', 'text')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ocultar contraseña' }))
+    expect(password).toHaveAttribute('type', 'password')
+  })
+
   it('muestra el error del servidor', async () => {
     const auth = fakeAuth({
       login: vi.fn().mockRejectedValue(new ApiError(401, 'Email o contraseña incorrectos')),

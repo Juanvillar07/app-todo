@@ -71,6 +71,9 @@ terraform fmt -recursive && terraform validate
 - Llamadas a la API con TanStack Query usando el cliente tipado `api` + `unwrap()` de `lib/api.ts` (openapi-fetch). Tras cambiar la API, `npm run gen:api` y commit del `.d.ts`.
 - Formularios con React Hook Form + Zod y los componentes `Field*` de shadcn.
 - Sesión: `useAuth()` (`features/auth`). Tema: `useTheme()` de `components/theme-context` (sin next-themes).
+- Datos de tareas y estados: hooks de `features/tasks/queries.ts` (claves en `keys`). Mover en el kanban usa `useMoveTask()`, que actualiza la caché de forma optimista y revierte si falla.
+- Estado en la URL: el Sheet de tarea se abre con `?task=<id>` / `?task=new&task_status=<id>` y los filtros de la lista son `q`, `status`, `priority`, `sort`, `page`.
+- Las pantallas de tareas se cargan con `lazy` en `routes/router.tsx`; `RouteError` cubre errores de ruta (p. ej. chunks viejos tras un deploy).
 - Añadir componentes con `npx shadcn@latest add <nombre>`; no editar a mano `components/ui/` salvo necesidad.
 
 ## Flujo de trabajo

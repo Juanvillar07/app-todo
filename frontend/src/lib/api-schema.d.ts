@@ -208,7 +208,7 @@ export interface components {
              * Scope
              * @default
              */
-            scope: string;
+            scope?: string;
             /** Client Id */
             client_id?: string | null;
             /**
@@ -235,17 +235,17 @@ export interface components {
              * Color
              * @default #94a3b8
              */
-            color: string;
+            color?: string;
             /**
              * Is Done
              * @default false
              */
-            is_done: boolean;
+            is_done?: boolean;
             /**
              * Is Default
              * @default false
              */
-            is_default: boolean;
+            is_default?: boolean;
         };
         /** StatusPublic */
         StatusPublic: {
@@ -288,7 +288,7 @@ export interface components {
             /** Description */
             description?: string | null;
             /** @default medium */
-            priority: components["schemas"]["Priority"];
+            priority?: components["schemas"]["Priority"];
             /** Due Date */
             due_date?: string | null;
             /** Status Id */
@@ -363,7 +363,7 @@ export interface components {
              * Token Type
              * @default bearer
              */
-            token_type: string;
+            token_type?: string;
         };
         /** UserCreate */
         UserCreate: {

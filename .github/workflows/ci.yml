@@ -85,7 +85,6 @@ jobs:
         env:
           # Solo para importar la app: no se conecta a ninguna BD.
           DATABASE_URL: postgresql+psycopg://ci:ci@localhost:5432/ci
-          JWT_SECRET: ci-secret-que-no-se-usa-para-nada-real
         run: |
           uv sync --locked --no-dev
           uv run python -c "import json; from app.main import app; print(json.dumps(app.openapi()))" > "$RUNNER_TEMP/openapi.json"

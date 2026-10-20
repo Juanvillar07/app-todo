@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { AuthLayout } from './auth-layout'
 import { useAuth } from './auth-context'
 import { FormError } from './form-error'
+import { GoogleSignIn } from './google-sign-in'
 import { PasswordInput } from './password-input'
 import { type RegisterValues, registerSchema } from './schemas'
 
@@ -42,6 +43,10 @@ export function RegisterPage() {
         </>
       }
     >
+      <GoogleSignIn
+        onSuccess={() => navigate('/', { replace: true })}
+        onError={(message) => form.setError('root', { message })}
+      />
       <form onSubmit={onSubmit} noValidate>
         <FieldGroup>
           <Field data-invalid={!!errors.full_name}>

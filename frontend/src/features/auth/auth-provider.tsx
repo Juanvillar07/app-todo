@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
-import { api, setUnauthorizedHandler, tokenStore, unwrap } from '@/lib/api'
+import { type ReactNode, useCallback, useEffect, useMemo } from 'react'
+import { ApiError, api, setUnauthorizedHandler, unwrap, type User } from '@/lib/api'
 import {
   AuthContext,
   type AuthContextValue,
@@ -9,67 +9,93 @@ import {
   type RegisterInput,
 } from './auth-context'
 
-const fetchMe = () => unwrap(api.GET('/api/users/me'))
+const authConfigQueryKey = ['auth-config'] as const
+
+/** Usuario de la cookie de sesión, o null si no hay sesión (401). */
+async function fetchMe(): Promise<User | null> {
+  try {
+    return await unwrap(api.GET('/api/users/me'))
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return null
+    throw error
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
-  const [token, setToken] = useState(tokenStore.get)
 
+  // La cookie es httpOnly: la única forma de saber si hay sesión es preguntar al backend.
   const me = useQuery({
     queryKey: meQueryKey,
     queryFn: fetchMe,
-    enabled: token !== null,
     staleTime: Infinity,
     retry: false,
   })
 
-  const logout = useCallback(() => {
-    tokenStore.clear()
-    setToken(null)
-    queryClient.clear()
-  }, [queryClient])
+  const config = useQuery({
+    queryKey: authConfigQueryKey,
+    queryFn: () => unwrap(api.GET('/api/auth/config')),
+    staleTime: Infinity,
+  })
 
-  useEffect(() => {
-    setUnauthorizedHandler(logout)
-    return () => setUnauthorizedHandler(null)
-  }, [logout])
-
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const { access_token } = await unwrap(
-        api.POST('/api/auth/login', {
-          body: { username: email, password, scope: '' },
-          bodySerializer: (body) => new URLSearchParams(body as Record<string, string>),
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        }),
-      )
-      tokenStore.set(access_token)
-      try {
-        await queryClient.fetchQuery({ queryKey: meQueryKey, queryFn: fetchMe })
-      } catch (error) {
-        tokenStore.clear()
-        throw error
+  /** Fija el usuario de la sesión (o null) y, al cerrarla, borra los datos del anterior. */
+  const setSessionUser = useCallback(
+    (user: User | null) => {
+      queryClient.setQueryData(meQueryKey, user)
+      if (user === null) {
+        const keep = new Set<unknown>([meQueryKey[0], authConfigQueryKey[0]])
+        queryClient.removeQueries({ predicate: (q) => !keep.has(q.queryKey[0]) })
       }
-      setToken(access_token)
     },
     [queryClient],
   )
 
-  const register = useCallback(
-    async (data: RegisterInput) => {
-      await unwrap(api.POST('/api/auth/register', { body: data }))
-      await login(data.email, data.password)
+  // Sesión caducada o revocada: el backend responde 401 → pantalla de login.
+  useEffect(() => {
+    setUnauthorizedHandler(() => setSessionUser(null))
+    return () => setUnauthorizedHandler(null)
+  }, [setSessionUser])
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      setSessionUser(await unwrap(api.POST('/api/auth/login', { body: { email, password } })))
     },
-    [login],
+    [setSessionUser],
   )
 
-  // Un token expirado provoca 401 → el middleware de la API llama a logout().
-  const status: AuthStatus =
-    token === null || me.isError ? 'anonymous' : me.data ? 'authenticated' : 'loading'
+  const register = useCallback(
+    async (data: RegisterInput) => {
+      setSessionUser(await unwrap(api.POST('/api/auth/register', { body: data })))
+    },
+    [setSessionUser],
+  )
+
+  const loginWithGoogle = useCallback(
+    async (credential: string) => {
+      setSessionUser(await unwrap(api.POST('/api/auth/google', { body: { credential } })))
+    },
+    [setSessionUser],
+  )
+
+  const logout = useCallback(() => {
+    // Se sale en la interfaz al momento; el backend borra la sesión y la cookie.
+    setSessionUser(null)
+    void api.POST('/api/auth/logout')
+  }, [setSessionUser])
+
+  const status: AuthStatus = me.isPending ? 'loading' : me.data ? 'authenticated' : 'anonymous'
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status, user: me.data ?? null, login, register, logout }),
-    [status, me.data, login, register, logout],
+    () => ({
+      status,
+      user: me.data ?? null,
+      login,
+      register,
+      loginWithGoogle,
+      googleClientId: config.data?.google_client_id ?? null,
+      logout,
+    }),
+    [status, me.data, login, register, loginWithGoogle, config.data, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -5,62 +5,37 @@ import type { components, paths } from './api-schema'
 export type Schemas = components['schemas']
 export type User = Schemas['UserPublic']
 
-// --- Token ---
-// Se guarda en memoria y en localStorage (proyecto de prueba; ver "Recomendaciones" en docs/PLAN.md).
+// --- Sesión ---
+// La sesión va en una cookie httpOnly que pone el backend: el navegador la envía sola en cada
+// petición al mismo origen y JavaScript no puede leerla. Aquí no se guarda ningún token.
 
-const TOKEN_KEY = 'todo.token'
-
-function readStoredToken(): string | null {
-  try {
-    return localStorage.getItem(TOKEN_KEY)
-  } catch {
-    return null
-  }
+// Limpieza del token del sistema de login anterior (antes se guardaba en localStorage).
+try {
+  localStorage.removeItem('todo.token')
+} catch {
+  // sin almacenamiento: nada que limpiar
 }
 
-let token: string | null = readStoredToken()
-
-export const tokenStore = {
-  get: () => token,
-  set(value: string) {
-    token = value
-    try {
-      localStorage.setItem(TOKEN_KEY, value)
-    } catch {
-      // sin almacenamiento persistente: el token vive solo en memoria
-    }
-  },
-  clear() {
-    token = null
-    try {
-      localStorage.removeItem(TOKEN_KEY)
-    } catch {
-      // nada que limpiar
-    }
-  },
-}
-
-// Lo registra la sesión para cerrar sesión cuando el backend responde 401.
+// Lo registra la sesión para pasar a "sin sesión" cuando el backend responde 401.
 let onUnauthorized: (() => void) | null = null
 export function setUnauthorizedHandler(handler: (() => void) | null) {
   onUnauthorized = handler
 }
 
-const authMiddleware: Middleware = {
-  onRequest({ request }) {
-    if (token) request.headers.set('Authorization', `Bearer ${token}`)
-    return request
-  },
+const AUTH_ENDPOINTS = ['/api/auth/login', '/api/auth/register', '/api/auth/google']
+
+const sessionMiddleware: Middleware = {
   onResponse({ request, response }) {
-    const isLogin = new URL(request.url).pathname.endsWith('/auth/login')
-    if (response.status === 401 && token && !isLogin) onUnauthorized?.()
+    // Un 401 de login/registro es "credenciales incorrectas", no "sesión caducada".
+    const path = new URL(request.url).pathname
+    if (response.status === 401 && !AUTH_ENDPOINTS.includes(path)) onUnauthorized?.()
     return response
   },
 }
 
 // Mismo origen siempre: Vite hace proxy de /api en local y CloudFront en producción.
 export const api = createClient<paths>({ baseUrl: globalThis.location?.origin ?? '' })
-api.use(authMiddleware)
+api.use(sessionMiddleware)
 
 // --- Errores ---
 

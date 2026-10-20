@@ -12,6 +12,10 @@ export type AuthContextValue = {
   user: User | null
   login: (email: string, password: string) => Promise<void>
   register: (data: RegisterInput) => Promise<void>
+  /** Entrar o registrarse con el ID token que devuelve el botón de Google. */
+  loginWithGoogle: (credential: string) => Promise<void>
+  /** ID de cliente OAuth de Google, o null si el login con Google está desactivado. */
+  googleClientId: string | null
   logout: () => void
 }
 

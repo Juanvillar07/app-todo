@@ -1,7 +1,10 @@
 from functools import lru_cache
 
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _split(value: str) -> list[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 
 class Settings(BaseSettings):
@@ -9,14 +12,24 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=(".env", "../.env"), extra="ignore")
 
     database_url: str
-    jwt_secret: str = Field(min_length=32)
-    jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 60
     cors_origins: str = ""
+
+    # Sesión en cookie httpOnly.
+    # Orígenes (coma) desde los que se aceptan peticiones que modifican datos: protección CSRF.
+    app_origins: str = "http://localhost:5173"
+    session_days: int = 30
+    cookie_secure: bool = False  # true en producción (HTTPS)
+
+    # ID de cliente OAuth de Google. Vacío = login con Google desactivado.
+    google_client_id: str = ""
 
     @property
     def cors_origins_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        return _split(self.cors_origins)
+
+    @property
+    def app_origins_list(self) -> list[str]:
+        return [origin.rstrip("/") for origin in _split(self.app_origins)]
 
 
 @lru_cache

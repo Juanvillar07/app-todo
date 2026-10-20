@@ -10,6 +10,16 @@ class UserCreate(BaseModel):
     full_name: str | None = Field(default=None, max_length=255)
 
 
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+
+class GoogleLoginRequest(BaseModel):
+    # ID token (JWT) que devuelve el botón de Google Identity Services.
+    credential: str = Field(min_length=1, max_length=4096)
+
+
 class UserPublic(BaseModel):
     id: uuid.UUID
     email: EmailStr
@@ -18,6 +28,5 @@ class UserPublic(BaseModel):
     created_at: datetime
 
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+class AuthConfig(BaseModel):
+    google_client_id: str | None

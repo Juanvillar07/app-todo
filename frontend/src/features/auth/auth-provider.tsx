@@ -83,6 +83,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void api.POST('/api/auth/logout')
   }, [setSessionUser])
 
+  const requestPasswordReset = useCallback(async (email: string) => {
+    await unwrap(api.POST('/api/auth/forgot-password', { body: { email } }))
+  }, [])
+
+  const resetPassword = useCallback(
+    async (token: string, password: string) => {
+      await unwrap(api.POST('/api/auth/reset-password', { body: { token, password } }))
+      // El backend cerró todas las sesiones, también la de este navegador si la había.
+      setSessionUser(null)
+    },
+    [setSessionUser],
+  )
+
   const status: AuthStatus = me.isPending ? 'loading' : me.data ? 'authenticated' : 'anonymous'
 
   const value = useMemo<AuthContextValue>(
@@ -94,8 +107,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginWithGoogle,
       googleClientId: config.data?.google_client_id ?? null,
       logout,
+      requestPasswordReset,
+      resetPassword,
     }),
-    [status, me.data, login, register, loginWithGoogle, config.data, logout],
+    [
+      status,
+      me.data,
+      login,
+      register,
+      loginWithGoogle,
+      config.data,
+      logout,
+      requestPasswordReset,
+      resetPassword,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

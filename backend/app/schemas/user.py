@@ -20,6 +20,16 @@ class GoogleLoginRequest(BaseModel):
     credential: str = Field(min_length=1, max_length=4096)
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    # Token del enlace del correo (secrets.token_urlsafe(32) → 43 caracteres).
+    token: str = Field(min_length=1, max_length=256)
+    password: str = Field(min_length=8, max_length=128)
+
+
 class UserPublic(BaseModel):
     id: uuid.UUID
     email: EmailStr

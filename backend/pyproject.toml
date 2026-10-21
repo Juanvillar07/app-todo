@@ -9,6 +9,7 @@ dependencies = [
     "pwdlib[argon2]>=0.3.1",
     "pydantic-settings>=2.16.0",
     "pyjwt[crypto]>=2.15.1",
+    "resend>=2",
     "sqlmodel>=0.0.48",
 ]
 

@@ -17,6 +17,10 @@ export type AuthContextValue = {
   /** ID de cliente OAuth de Google, o null si el login con Google está desactivado. */
   googleClientId: string | null
   logout: () => void
+  /** Pide el correo con el enlace de recuperación (responde igual exista o no la cuenta). */
+  requestPasswordReset: (email: string) => Promise<void>
+  /** Pone la contraseña nueva con el token del enlace. El backend cierra todas las sesiones. */
+  resetPassword: (token: string, password: string) => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

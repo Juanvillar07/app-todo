@@ -1,12 +1,20 @@
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response, status
 
 from app.api.deps import SessionDep
 from app.core import sessions
 from app.core.config import get_settings
 from app.core.google import GoogleUnavailableError, verify_google_credential
 from app.models import User
-from app.schemas.user import AuthConfig, GoogleLoginRequest, LoginRequest, UserCreate, UserPublic
-from app.services import users
+from app.schemas.user import (
+    AuthConfig,
+    ForgotPasswordRequest,
+    GoogleLoginRequest,
+    LoginRequest,
+    ResetPasswordRequest,
+    UserCreate,
+    UserPublic,
+)
+from app.services import password_reset, users
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -60,6 +68,24 @@ def login_with_google(data: GoogleLoginRequest, session: SessionDep, response: R
     if not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="La cuenta está desactivada")
     return _start_session(session, user, response)
+
+
+@router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
+def forgot_password(data: ForgotPasswordRequest, background: BackgroundTasks) -> None:
+    """Envía un enlace para crear una contraseña nueva. Responde igual exista o no la cuenta (no
+    revela qué emails están registrados): todo el trabajo va en segundo plano."""
+    background.add_task(password_reset.send_reset_link, data.email)
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+def reset_password(data: ResetPasswordRequest, session: SessionDep, response: Response):
+    """Pone la contraseña nueva con el token del correo y cierra todas las sesiones del usuario
+    (también la de este navegador: después hay que iniciar sesión)."""
+    if password_reset.reset_password(session, data.token, data.password) is None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail="El enlace no es válido o ha caducado"
+        )
+    sessions.clear_session_cookie(response)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

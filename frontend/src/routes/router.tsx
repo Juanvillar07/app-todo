@@ -1,7 +1,9 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router'
 import { AppLayout } from '@/components/app-layout'
+import { ForgotPasswordPage } from '@/features/auth/forgot-password-page'
 import { LoginPage } from '@/features/auth/login-page'
 import { RegisterPage } from '@/features/auth/register-page'
+import { ResetPasswordPage } from '@/features/auth/reset-password-page'
 import { ProtectedRoute, PublicOnlyRoute } from './guards'
 import { RouteError } from './route-error'
 
@@ -15,8 +17,11 @@ export const routes: RouteObject[] = [
         children: [
           { path: '/login', element: <LoginPage /> },
           { path: '/register', element: <RegisterPage /> },
+          { path: '/forgot-password', element: <ForgotPasswordPage /> },
         ],
       },
+      // Enlace del correo: funciona con o sin sesión (al terminar, el backend las cierra todas).
+      { path: '/reset-password', element: <ResetPasswordPage /> },
       {
         element: <ProtectedRoute />,
         children: [

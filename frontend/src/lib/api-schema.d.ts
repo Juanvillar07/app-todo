@@ -95,6 +95,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Forgot Password
+         * @description Envía un enlace para crear una contraseña nueva. Responde igual exista o no la cuenta (no
+         *     revela qué emails están registrados): todo el trabajo va en segundo plano.
+         */
+        post: operations["forgot_password_api_auth_forgot_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Password
+         * @description Pone la contraseña nueva con el token del correo y cierra todas las sesiones del usuario
+         *     (también la de este navegador: después hay que iniciar sesión).
+         */
+        post: operations["reset_password_api_auth_reset_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/logout": {
         parameters: {
             query?: never;
@@ -255,6 +297,14 @@ export interface components {
             /** Google Client Id */
             google_client_id: string | null;
         };
+        /** ForgotPasswordRequest */
+        ForgotPasswordRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+        };
         /** GoogleLoginRequest */
         GoogleLoginRequest: {
             /** Credential */
@@ -280,6 +330,13 @@ export interface components {
          * @enum {string}
          */
         Priority: "low" | "medium" | "high" | "urgent";
+        /** ResetPasswordRequest */
+        ResetPasswordRequest: {
+            /** Token */
+            token: string;
+            /** Password */
+            password: string;
+        };
         /** StatusCreate */
         StatusCreate: {
             /** Name */
@@ -591,6 +648,70 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserPublic"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    forgot_password_api_auth_forgot_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgotPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_password_api_auth_reset_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

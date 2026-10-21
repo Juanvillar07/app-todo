@@ -5,7 +5,6 @@ una copia de la BD no sirve para suplantar sesiones. Las sesiones se pueden revo
 renuevan solas mientras se usan (caducidad deslizante).
 """
 
-import hashlib
 import secrets
 from datetime import timedelta
 
@@ -13,14 +12,11 @@ from fastapi import Response
 from sqlmodel import Session, delete
 
 from app.core.config import get_settings
+from app.core.security import hash_token
 from app.models import User, UserSession
 from app.models.common import utcnow
 
 COOKIE_NAME = "tareas_session"
-
-
-def _hash(token: str) -> str:
-    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def _lifetime() -> timedelta:
@@ -35,14 +31,14 @@ def create_session(db: Session, user: User) -> str:
         delete(UserSession).where(UserSession.user_id == user.id, UserSession.expires_at <= now)
     )
     token = secrets.token_urlsafe(32)
-    db.add(UserSession(id=_hash(token), user_id=user.id, expires_at=now + _lifetime()))
+    db.add(UserSession(id=hash_token(token), user_id=user.id, expires_at=now + _lifetime()))
     db.commit()
     return token
 
 
 def get_session_user(db: Session, token: str) -> tuple[User, bool] | None:
     """Usuario de la sesión y si se ha renovado (hay que reenviar la cookie), o None si no vale."""
-    session = db.get(UserSession, _hash(token))
+    session = db.get(UserSession, hash_token(token))
     now = utcnow()
     if session is None or session.expires_at <= now:
         return None
@@ -60,7 +56,7 @@ def get_session_user(db: Session, token: str) -> tuple[User, bool] | None:
 
 
 def delete_session(db: Session, token: str) -> None:
-    db.exec(delete(UserSession).where(UserSession.id == _hash(token)))
+    db.exec(delete(UserSession).where(UserSession.id == hash_token(token)))
     db.commit()
 
 

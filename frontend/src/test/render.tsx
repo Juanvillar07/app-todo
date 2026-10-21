@@ -13,6 +13,8 @@ export function fakeAuth(overrides: Partial<AuthContextValue> = {}): AuthContext
     loginWithGoogle: vi.fn().mockResolvedValue(undefined),
     googleClientId: null,
     logout: vi.fn(),
+    requestPasswordReset: vi.fn().mockResolvedValue(undefined),
+    resetPassword: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   }
 }

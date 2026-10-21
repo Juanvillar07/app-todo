@@ -55,7 +55,8 @@ terraform init -backend=false             # para validar sin credenciales ni bac
 - Todas las rutas bajo `/api`. Todo protegido con JWT salvo `/api/auth/*` y `/api/health`.
 - **Aislamiento por usuario:** cada consulta filtra por el `user_id` del token. Recurso de otro usuario → **404**, nunca 403.
 - Esquemas separados por recurso: `XCreate`, `XUpdate` (todo opcional), `XPublic`. Nunca exponer `hashed_password`.
-- Configuración solo por variables de entorno (`pydantic-settings`): `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRE_MINUTES`, `CORS_ORIGINS`.
+- Configuración solo por variables de entorno (`pydantic-settings`): `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRE_MINUTES`, `CORS_ORIGINS`, y para el correo (Resend) `RESEND_API_KEY`, `EMAIL_FROM`, `APP_URL`.
+- Correo: `send_email()` de `core/email.py`, siempre desde `BackgroundTasks`. Sin `RESEND_API_KEY` no envía y escribe el correo en el log (desarrollo local). Plantillas HTML en `app/templates/`.
 - Esquema de BD solo con migraciones de Alembic; nunca `create_all` (los tests también migran con Alembic). Nuevos modelos se importan en `app/models/__init__.py`.
 - `JWT_SECRET` debe tener al menos 32 caracteres. OpenAPI/Swagger en `/api/docs`.
 - Rutas delgadas; la lógica de negocio va en `services/`.

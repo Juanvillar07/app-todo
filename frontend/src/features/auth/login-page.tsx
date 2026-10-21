@@ -64,7 +64,15 @@ export function LoginPage() {
             <FieldError errors={[errors.email]} />
           </Field>
           <Field data-invalid={!!errors.password}>
-            <FieldLabel htmlFor="password">Contraseña</FieldLabel>
+            <div className="flex items-center justify-between gap-2">
+              <FieldLabel htmlFor="password">Contraseña</FieldLabel>
+              <Link
+                to="/forgot-password"
+                className="text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
             <PasswordInput
               id="password"
               autoComplete="current-password"

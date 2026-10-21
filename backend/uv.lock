@@ -1491,6 +1491,19 @@ wheels = [
 ]
 
 [[package]]
+name = "resend"
+version = "2.50.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/81/ac/0077dd598438dff1ee0ffe44cb8dec300f078b4347d7365a6840b950be43/resend-2.50.0.tar.gz", hash = "sha256:9224140d22b336397ba34530f3fb166a56977d59e7166dbfc814cf83541ee280", size = 86206, upload-time = "2026-10-16T19:54:45.387Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/02/2a/cb87568af993e4e3cdf4977998c46c3accb718166a5b6486186dab96af52/resend-2.50.0-py2.py3-none-any.whl", hash = "sha256:4842fdf1a79deaebfe0c6576d0d6390fd732f941f70a43d244d56a1bc156c97b", size = 126265, upload-time = "2026-10-16T19:54:43.369Z" },
+]
+
+[[package]]
 name = "rich"
 version = "15.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1778,6 +1791,7 @@ dependencies = [
     { name = "pwdlib", extra = ["argon2"] },
     { name = "pydantic-settings" },
     { name = "pyjwt", extra = ["crypto"] },
+    { name = "resend" },
     { name = "sqlmodel" },
 ]
 
@@ -1795,6 +1809,7 @@ requires-dist = [
     { name = "pwdlib", extras = ["argon2"], specifier = ">=0.3.1" },
     { name = "pydantic-settings", specifier = ">=2.16.0" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.15.1" },
+    { name = "resend", specifier = ">=2" },
     { name = "sqlmodel", specifier = ">=0.0.48" },
 ]
 

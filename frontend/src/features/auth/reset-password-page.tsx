@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -11,6 +11,7 @@ import { useAuth } from './auth-context'
 import { FormError } from './form-error'
 import { PasswordInput } from './password-input'
 import { type ResetPasswordValues, resetPasswordSchema } from './schemas'
+import { useLinkToken } from './use-link-token'
 
 const loginFooter = (
   <Link to="/login" className="font-medium text-primary underline-offset-4 hover:underline">
@@ -20,16 +21,10 @@ const loginFooter = (
 
 /** Destino del enlace del correo: /reset-password?token=… (funciona con o sin sesión). */
 export function ResetPasswordPage() {
-  const { resetPassword } = useAuth()
+  const { resetPassword, isResetLinkValid } = useAuth()
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  // El token se guarda al entrar y se quita de la URL (historial, capturas, enlaces compartidos).
-  const [token] = useState(() => searchParams.get('token'))
-  const [invalid, setInvalid] = useState(!token)
-
-  useEffect(() => {
-    if (searchParams.has('token')) setSearchParams({}, { replace: true })
-  }, [searchParams, setSearchParams])
+  const { token, state } = useLinkToken(isResetLinkValid)
+  const [rejected, setRejected] = useState(false)
 
   const form = useForm<ResetPasswordValues>({
     resolver: zodResolver(resetPasswordSchema),
@@ -44,12 +39,20 @@ export function ResetPasswordPage() {
       toast.success('Contraseña actualizada. Inicia sesión.')
       navigate('/login', { replace: true })
     } catch (error) {
-      if (error instanceof ApiError && error.status === 400) setInvalid(true)
+      if (error instanceof ApiError && error.status === 400) setRejected(true)
       else form.setError('root', { message: (error as Error).message })
     }
   })
 
-  if (invalid) {
+  if (state === 'checking') {
+    return (
+      <AuthLayout title="Crea una contraseña nueva" subtitle="Comprobando el enlace…" footer={loginFooter}>
+        <div className="h-24" aria-busy="true" />
+      </AuthLayout>
+    )
+  }
+
+  if (rejected || state === 'invalid') {
     return (
       <AuthLayout
         title="Enlace no válido"

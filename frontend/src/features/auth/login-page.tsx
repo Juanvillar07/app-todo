@@ -1,11 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { ApiError } from '@/lib/api'
 import { AuthLayout } from './auth-layout'
 import { useAuth } from './auth-context'
+import { CheckEmail } from './check-email'
 import { FormError } from './form-error'
 import { GoogleSignIn } from './google-sign-in'
 import { PasswordInput } from './password-input'
@@ -16,6 +19,8 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const from = (location.state as { from?: string } | null)?.from ?? '/'
+  // Contraseña correcta pero email sin confirmar (403): se ofrece reenviar el enlace.
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -28,9 +33,18 @@ export function LoginPage() {
       await login(email, password)
       navigate(from, { replace: true })
     } catch (error) {
-      form.setError('root', { message: (error as Error).message })
+      if (error instanceof ApiError && error.status === 403) setUnverifiedEmail(email)
+      else form.setError('root', { message: (error as Error).message })
     }
   })
+
+  if (unverifiedEmail) {
+    return (
+      <AuthLayout title="Confirma tu email" subtitle="Antes de entrar, verifica que el email es tuyo.">
+        <CheckEmail email={unverifiedEmail} onBack={() => setUnverifiedEmail(null)} />
+      </AuthLayout>
+    )
+  }
 
   return (
     <AuthLayout

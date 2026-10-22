@@ -5,7 +5,9 @@ from app.core.google import GoogleIdentity
 from app.core.security import DUMMY_HASH, hash_password, verify_password
 from app.core.sessions import delete_user_sessions
 from app.models import User
+from app.models.common import utcnow
 from app.schemas.user import UserCreate
+from app.services.email_verification import mark_verified
 from app.services.statuses import add_default_statuses
 
 
@@ -53,13 +55,16 @@ def get_or_create_from_google(session: Session, identity: GoogleIdentity) -> Use
 
     user = get_by_email(session, identity.email)
     if user is not None:
-        # Enlace por email (Google lo ha verificado). La app no verifica emails al registrarse,
-        # así que alguien pudo crear antes esta cuenta con un email ajeno: se anulan su contraseña
-        # y sus sesiones para que solo el dueño real del email (vía Google) pueda entrar.
+        # Enlace por email (Google lo ha verificado).
+        if not user.email_verified:
+            # Nadie confirmó todavía que el email de esta cuenta sea de quien la creó: pudo crearla
+            # un tercero con un email ajeno. Se anulan su contraseña y sus sesiones para que solo
+            # el dueño real del email (vía Google) pueda entrar.
+            user.hashed_password = None
+            delete_user_sessions(session, user)
+            mark_verified(session, user)
         user.google_sub = identity.sub
-        user.hashed_password = None
         user.full_name = user.full_name or identity.name
-        delete_user_sessions(session, user)
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -68,7 +73,12 @@ def get_or_create_from_google(session: Session, identity: GoogleIdentity) -> Use
     try:
         return _create(
             session,
-            User(email=identity.email, full_name=identity.name, google_sub=identity.sub),
+            User(
+                email=identity.email,
+                full_name=identity.name,
+                google_sub=identity.sub,
+                email_verified_at=utcnow(),
+            ),
         )
     except IntegrityError:
         # Dos peticiones simultáneas con la misma cuenta nueva: la otra ya la creó.

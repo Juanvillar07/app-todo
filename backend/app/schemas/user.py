@@ -30,11 +30,21 @@ class ResetPasswordRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
 
 
+class TokenRequest(BaseModel):
+    # Token de un enlace del correo (verificación de email o recuperación de contraseña).
+    token: str = Field(min_length=1, max_length=256)
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
 class UserPublic(BaseModel):
     id: uuid.UUID
     email: EmailStr
     full_name: str | None
     is_active: bool
+    email_verified: bool
     created_at: datetime
 
 

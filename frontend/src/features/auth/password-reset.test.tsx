@@ -44,10 +44,19 @@ describe('Recuperación de contraseña', () => {
     )
   })
 
+  it('un enlace caducado se detecta al abrir la página, sin enviar nada', async () => {
+    const auth = fakeAuth({ isResetLinkValid: vi.fn().mockResolvedValue(false) })
+    renderRoutes(routes, '/reset-password?token=viejo', auth)
+    expect(await screen.findByRole('heading', { name: 'Enlace no válido' })).toBeInTheDocument()
+    expect(auth.isResetLinkValid).toHaveBeenCalledWith('viejo')
+    expect(screen.queryByLabelText('Contraseña nueva')).not.toBeInTheDocument()
+    expect(auth.resetPassword).not.toHaveBeenCalled()
+  })
+
   it('exige que las dos contraseñas coincidan', async () => {
     const auth = fakeAuth()
     renderRoutes(routes, '/reset-password?token=abc', auth)
-    await userEvent.type(screen.getByLabelText('Contraseña nueva'), 'nueva-clave-1')
+    await userEvent.type(await screen.findByLabelText('Contraseña nueva'), 'nueva-clave-1')
     await userEvent.type(screen.getByLabelText('Repite la contraseña'), 'otra-cosa-22')
     await userEvent.click(screen.getByRole('button', { name: 'Guardar contraseña' }))
     expect(await screen.findByText('Las contraseñas no coinciden')).toBeInTheDocument()
@@ -60,7 +69,7 @@ describe('Recuperación de contraseña', () => {
     await screen.findByRole('heading', { name: 'Crea una contraseña nueva' })
     expect(router.state.location.search).toBe('')
 
-    await userEvent.type(screen.getByLabelText('Contraseña nueva'), 'nueva-clave-1')
+    await userEvent.type(await screen.findByLabelText('Contraseña nueva'), 'nueva-clave-1')
     await userEvent.type(screen.getByLabelText('Repite la contraseña'), 'nueva-clave-1')
     await userEvent.click(screen.getByRole('button', { name: 'Guardar contraseña' }))
 
@@ -75,7 +84,7 @@ describe('Recuperación de contraseña', () => {
         .mockRejectedValue(new ApiError(400, 'El enlace no es válido o ha caducado')),
     })
     renderRoutes(routes, '/reset-password?token=viejo', auth)
-    await userEvent.type(screen.getByLabelText('Contraseña nueva'), 'nueva-clave-1')
+    await userEvent.type(await screen.findByLabelText('Contraseña nueva'), 'nueva-clave-1')
     await userEvent.type(screen.getByLabelText('Repite la contraseña'), 'nueva-clave-1')
     await userEvent.click(screen.getByRole('button', { name: 'Guardar contraseña' }))
     expect(await screen.findByRole('heading', { name: 'Enlace no válido' })).toBeInTheDocument()

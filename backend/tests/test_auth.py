@@ -6,12 +6,13 @@ from datetime import timedelta
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
+from app.core import sessions
 from app.core.sessions import COOKIE_NAME
 from app.db import engine
 from app.main import app
 from app.models import User, UserSession
 from app.models.common import utcnow
-from tests.conftest import TEST_ORIGIN, login, register
+from tests.conftest import TEST_ORIGIN, login, register, signup
 
 
 def set_cookie_header(response) -> str:
@@ -32,25 +33,19 @@ def test_health(client):
 # --- Registro y login ---
 
 
-def test_register_creates_user_and_opens_session(client):
+def test_register_creates_unverified_account_without_session(client):
     r = register(client, email="Ana@Example.com")
     assert r.status_code == 201
     body = r.json()
     assert body["email"] == "ana@example.com"
     assert body["full_name"] == "Ana"
+    assert body["email_verified"] is False
     assert "hashed_password" not in body
     assert "google_sub" not in body
 
-    cookie = set_cookie_header(r)
-    assert f"{COOKIE_NAME}=" in cookie
-    assert "HttpOnly" in cookie
-    assert "SameSite=lax" in cookie
-    assert "Path=/" in cookie
-    assert "Max-Age=2592000" in cookie  # 30 días
-    assert "Secure" not in cookie  # COOKIE_SECURE=false en tests (http)
-
-    # El cliente guarda la cookie como un navegador: ya hay sesión.
-    assert client.get("/api/users/me").json()["email"] == "ana@example.com"
+    # Hasta confirmar el email no hay sesión.
+    assert f"{COOKIE_NAME}=" not in set_cookie_header(r)
+    assert client.get("/api/users/me").status_code == 401
 
 
 def test_register_duplicate_email(client):
@@ -64,23 +59,51 @@ def test_register_validates_input(client):
 
 
 def test_login_opens_session(client):
-    register(client)
+    signup(client)
     client.cookies.clear()
     r = login(client, email="ANA@EXAMPLE.COM")
     assert r.status_code == 200
     assert r.json()["email"] == "ana@example.com"
-    assert f"{COOKIE_NAME}=" in set_cookie_header(r)
-    assert client.get("/api/users/me").status_code == 200
+
+    cookie = set_cookie_header(r)
+    assert f"{COOKIE_NAME}=" in cookie
+    assert "HttpOnly" in cookie
+    assert "SameSite=lax" in cookie
+    assert "Path=/" in cookie
+    assert "Max-Age=2592000" in cookie  # 30 días
+    assert "Secure" not in cookie  # COOKIE_SECURE=false en tests (http)
+
+    # El cliente guarda la cookie como un navegador: ya hay sesión.
+    assert client.get("/api/users/me").json()["email"] == "ana@example.com"
+
+
+def test_login_requires_verified_email(client):
+    register(client)
+    r = login(client)
+    assert r.status_code == 403
+    assert r.json()["detail"].startswith("Confirma tu email")
+    assert f"{COOKIE_NAME}=" not in set_cookie_header(r)
+    # Con una contraseña incorrecta no se revela que la cuenta existe sin verificar.
+    assert login(client, password="incorrecta").status_code == 401
+
+
+def test_session_of_unverified_account_is_rejected(client):
+    register(client)
+    with Session(engine) as db:
+        user = db.exec(select(User).where(User.email == "ana@example.com")).one()
+        token = sessions.create_session(db, user)  # p. ej. abierta antes de exigir verificación
+    client.cookies.set(COOKIE_NAME, token)
+    assert client.get("/api/users/me").status_code == 401
 
 
 def test_login_wrong_password_or_unknown_user(client):
-    register(client)
+    signup(client)
     assert login(client, password="incorrecta").status_code == 401
     assert login(client, email="nadie@example.com").status_code == 401
 
 
 def test_token_is_stored_hashed(client):
-    register(client)
+    signup(client)
     token = client.cookies[COOKIE_NAME]
     row = session_row(token)
     assert row is not None
@@ -102,7 +125,7 @@ def test_me_rejects_unknown_cookie(client):
 
 
 def test_logout_revokes_session_and_clears_cookie(client):
-    register(client)
+    signup(client)
     token = client.cookies[COOKIE_NAME]
     r = client.post("/api/auth/logout")
     assert r.status_code == 204
@@ -119,7 +142,7 @@ def test_logout_without_session_is_fine(client):
 
 
 def test_expired_session_is_rejected(client):
-    register(client)
+    signup(client)
     token = client.cookies[COOKIE_NAME]
     with Session(engine) as db:
         row = db.get(UserSession, session_row(token).id)
@@ -130,7 +153,7 @@ def test_expired_session_is_rejected(client):
 
 
 def test_session_is_renewed_when_half_used(client):
-    register(client)
+    signup(client)
     token = client.cookies[COOKIE_NAME]
 
     fresh = client.get("/api/users/me")
@@ -149,7 +172,7 @@ def test_session_is_renewed_when_half_used(client):
 
 
 def test_inactive_user_loses_access(client):
-    register(client)
+    signup(client)
     with Session(engine) as db:
         user = db.exec(select(User).where(User.email == "ana@example.com")).one()
         user.is_active = False
@@ -182,7 +205,7 @@ def test_mutation_from_foreign_origin_is_blocked(client, auth_headers):
 
 
 def test_login_from_foreign_origin_is_blocked(client):
-    register(client)
+    signup(client)
     r = client.post(
         "/api/auth/login",
         json={"email": "ana@example.com", "password": "secreto123"},

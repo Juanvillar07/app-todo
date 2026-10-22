@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
@@ -6,6 +7,7 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/c
 import { Input } from '@/components/ui/input'
 import { AuthLayout } from './auth-layout'
 import { useAuth } from './auth-context'
+import { CheckEmail } from './check-email'
 import { FormError } from './form-error'
 import { GoogleSignIn } from './google-sign-in'
 import { PasswordInput } from './password-input'
@@ -14,6 +16,7 @@ import { type RegisterValues, registerSchema } from './schemas'
 export function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
+  const [sentTo, setSentTo] = useState<string | null>(null)
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
@@ -24,11 +27,20 @@ export function RegisterPage() {
   const onSubmit = form.handleSubmit(async ({ full_name, ...rest }) => {
     try {
       await register({ ...rest, full_name: full_name || null })
-      navigate('/', { replace: true })
+      // Sin sesión todavía: hay que confirmar el email con el enlace del correo.
+      setSentTo(rest.email)
     } catch (error) {
       form.setError('root', { message: (error as Error).message })
     }
   })
+
+  if (sentTo) {
+    return (
+      <AuthLayout title="Revisa tu correo" subtitle="Confirma tu email para empezar.">
+        <CheckEmail email={sentTo} onBack={() => setSentTo(null)} />
+      </AuthLayout>
+    )
+  }
 
   return (
     <AuthLayout

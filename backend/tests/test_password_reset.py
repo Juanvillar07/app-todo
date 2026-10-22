@@ -11,7 +11,7 @@ from app.core.sessions import COOKIE_NAME
 from app.db import engine
 from app.models import PasswordReset, UserSession
 from app.services import password_reset
-from tests.conftest import google_credential, login, register
+from tests.conftest import google_credential, login, signup
 
 
 @pytest.fixture
@@ -46,7 +46,7 @@ def test_unknown_email_gets_same_response_and_no_mail(client, outbox):
 
 
 def test_known_email_receives_link(client, outbox):
-    register(client)
+    signup(client)
     client.cookies.clear()
 
     r = forgot(client, "Ana@Example.com")
@@ -65,7 +65,7 @@ def test_known_email_receives_link(client, outbox):
 
 
 def test_reset_changes_password(client, outbox):
-    register(client)
+    signup(client)
     client.cookies.clear()
     forgot(client)
 
@@ -76,7 +76,7 @@ def test_reset_changes_password(client, outbox):
 
 
 def test_reset_revokes_all_sessions(client, outbox):
-    register(client)  # deja una sesión abierta en este cliente
+    signup(client)  # deja una sesión abierta en este cliente
     assert client.get("/api/users/me").status_code == 200
     forgot(client)
 
@@ -92,7 +92,7 @@ def test_reset_revokes_all_sessions(client, outbox):
 
 
 def test_old_session_token_no_longer_works(client, outbox):
-    register(client)
+    signup(client)
     old_token = client.cookies[COOKIE_NAME]
     forgot(client)
     reset(client, token_from(outbox[0]))
@@ -102,7 +102,7 @@ def test_old_session_token_no_longer_works(client, outbox):
 
 
 def test_token_is_single_use(client, outbox):
-    register(client)
+    signup(client)
     forgot(client)
     token = token_from(outbox[0])
 
@@ -117,7 +117,7 @@ def test_invalid_token(client):
 
 
 def test_expired_token(client, outbox):
-    register(client)
+    signup(client)
     forgot(client)
     with Session(engine) as db:
         stored = db.exec(select(PasswordReset)).one()
@@ -130,7 +130,7 @@ def test_expired_token(client, outbox):
 
 
 def test_new_link_replaces_previous_and_respects_cooldown(client, outbox):
-    register(client)
+    signup(client)
     forgot(client)
     forgot(client)  # dentro del minuto: no se envía otro
     assert len(outbox) == 1
@@ -159,6 +159,34 @@ def test_google_only_account_can_create_password(client, outbox):
 
 
 def test_short_password_rejected(client, outbox):
-    register(client)
+    signup(client)
     forgot(client)
     assert reset(client, token_from(outbox[0]), "corta").status_code == 422
+
+
+def validate(client, token: str):
+    return client.post("/api/auth/reset-password/validate", json={"token": token})
+
+
+def test_validate_link_without_consuming_it(client, outbox):
+    signup(client)
+    forgot(client)
+    token = token_from(outbox[0])
+    assert validate(client, token).status_code == 204
+    assert validate(client, token).status_code == 204  # no lo gasta
+    assert reset(client, token).status_code == 204
+    r = validate(client, token)
+    assert r.status_code == 400
+    assert r.json()["detail"] == "El enlace no es válido o ha caducado"
+
+
+def test_validate_expired_or_invalid_link(client, outbox):
+    signup(client)
+    forgot(client)
+    with Session(engine) as db:
+        stored = db.exec(select(PasswordReset)).one()
+        stored.expires_at -= timedelta(hours=2)
+        db.add(stored)
+        db.commit()
+    assert validate(client, token_from(outbox[0])).status_code == 400
+    assert validate(client, "inventado").status_code == 400

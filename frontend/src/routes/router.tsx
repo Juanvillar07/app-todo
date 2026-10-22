@@ -4,6 +4,7 @@ import { ForgotPasswordPage } from '@/features/auth/forgot-password-page'
 import { LoginPage } from '@/features/auth/login-page'
 import { RegisterPage } from '@/features/auth/register-page'
 import { ResetPasswordPage } from '@/features/auth/reset-password-page'
+import { VerifyEmailPage } from '@/features/auth/verify-email-page'
 import { ProtectedRoute, PublicOnlyRoute } from './guards'
 import { RouteError } from './route-error'
 
@@ -22,6 +23,7 @@ export const routes: RouteObject[] = [
       },
       // Enlace del correo: funciona con o sin sesión (al terminar, el backend las cierra todas).
       { path: '/reset-password', element: <ResetPasswordPage /> },
+      { path: '/verify-email', element: <VerifyEmailPage /> },
       {
         element: <ProtectedRoute />,
         children: [

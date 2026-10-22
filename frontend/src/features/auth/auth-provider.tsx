@@ -21,6 +21,17 @@ async function fetchMe(): Promise<User | null> {
   }
 }
 
+/** true si el backend da el enlace por bueno (204), false si caducó o no existe (400). */
+async function isLinkValid(call: Parameters<typeof unwrap>[0]): Promise<boolean> {
+  try {
+    await unwrap(call)
+    return true
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 400) return false
+    throw error
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
 
@@ -65,9 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     async (data: RegisterInput) => {
-      setSessionUser(await unwrap(api.POST('/api/auth/register', { body: data })))
+      // Sin sesión: primero hay que confirmar el email con el enlace del correo.
+      await unwrap(api.POST('/api/auth/register', { body: data }))
     },
-    [setSessionUser],
+    [],
   )
 
   const loginWithGoogle = useCallback(
@@ -96,6 +108,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [setSessionUser],
   )
 
+  const verifyEmail = useCallback(
+    async (token: string) => {
+      setSessionUser(await unwrap(api.POST('/api/auth/verify-email', { body: { token } })))
+    },
+    [setSessionUser],
+  )
+
+  const resendVerification = useCallback(async (email: string) => {
+    await unwrap(api.POST('/api/auth/resend-verification', { body: { email } }))
+  }, [])
+
+  const isVerificationLinkValid = useCallback(
+    (token: string) => isLinkValid(api.POST('/api/auth/verify-email/validate', { body: { token } })),
+    [],
+  )
+
+  const isResetLinkValid = useCallback(
+    (token: string) =>
+      isLinkValid(api.POST('/api/auth/reset-password/validate', { body: { token } })),
+    [],
+  )
+
   const status: AuthStatus = me.isPending ? 'loading' : me.data ? 'authenticated' : 'anonymous'
 
   const value = useMemo<AuthContextValue>(
@@ -109,6 +143,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       requestPasswordReset,
       resetPassword,
+      verifyEmail,
+      resendVerification,
+      isVerificationLinkValid,
+      isResetLinkValid,
     }),
     [
       status,
@@ -120,6 +158,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       requestPasswordReset,
       resetPassword,
+      verifyEmail,
+      resendVerification,
+      isVerificationLinkValid,
+      isResetLinkValid,
     ],
   )
 

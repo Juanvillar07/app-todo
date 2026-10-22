@@ -10,7 +10,7 @@ export function AuthLayout({
   title: string
   subtitle: string
   children: ReactNode
-  footer: ReactNode
+  footer?: ReactNode
 }) {
   return (
     <main className="relative isolate flex min-h-svh items-center justify-center overflow-hidden bg-canvas px-4 py-12">
@@ -26,7 +26,7 @@ export function AuthLayout({
           <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
           <div className="mt-8">{children}</div>
         </div>
-        <p className="mt-6 px-1 text-sm text-muted-foreground">{footer}</p>
+        {footer && <p className="mt-6 px-1 text-sm text-muted-foreground">{footer}</p>}
       </div>
     </main>
   )

@@ -17,6 +17,8 @@ TEST_GOOGLE_CLIENT_ID = "test-client.apps.googleusercontent.com"
 os.environ["APP_ORIGINS"] = TEST_ORIGIN
 os.environ["GOOGLE_CLIENT_ID"] = TEST_GOOGLE_CLIENT_ID
 os.environ["COOKIE_SECURE"] = "false"
+# Nunca enviar correos reales desde los tests (la app también lee el .env de la raíz del repo).
+os.environ["RESEND_API_KEY"] = ""
 
 from datetime import UTC, datetime, timedelta  # noqa: E402
 from types import SimpleNamespace  # noqa: E402
@@ -31,6 +33,7 @@ from alembic import command  # noqa: E402
 from app.core import google, sessions  # noqa: E402
 from app.db import engine  # noqa: E402
 from app.main import app  # noqa: E402
+from app.models.common import utcnow  # noqa: E402
 from app.schemas.user import UserCreate  # noqa: E402
 from app.services import users  # noqa: E402
 
@@ -89,11 +92,32 @@ def login(client: TestClient, email: str = "ana@example.com", password: str = "s
     return client.post("/api/auth/login", json={"email": email, "password": password})
 
 
+def verify_user(email: str) -> None:
+    """Marca el email como verificado directamente en la BD (como si hubiera usado el enlace)."""
+    with Session(engine) as db:
+        user = users.get_by_email(db, email)
+        user.email_verified_at = utcnow()
+        db.add(user)
+        db.commit()
+
+
+def signup(client: TestClient, email: str = "ana@example.com", password: str = "secreto123"):
+    """Cuenta lista para usar: registro + email verificado + sesión abierta en `client`."""
+    assert register(client, email, password).status_code == 201
+    verify_user(email)
+    r = login(client, email, password)
+    assert r.status_code == 200, r.text
+    return r
+
+
 def make_headers(email: str) -> dict[str, str]:
     """Crea un usuario con sesión directamente en la BD y devuelve la cookie como header.
     Así cada test puede tener varios usuarios con el mismo cliente."""
     with Session(engine) as db:
         user = users.create_user(db, UserCreate(email=email, password="secreto123"))
+        user.email_verified_at = utcnow()
+        db.add(user)
+        db.commit()
         token = sessions.create_session(db, user)
     return {"Cookie": f"{sessions.COOKIE_NAME}={token}"}
 

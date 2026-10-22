@@ -15,6 +15,10 @@ export function fakeAuth(overrides: Partial<AuthContextValue> = {}): AuthContext
     logout: vi.fn(),
     requestPasswordReset: vi.fn().mockResolvedValue(undefined),
     resetPassword: vi.fn().mockResolvedValue(undefined),
+    verifyEmail: vi.fn().mockResolvedValue(undefined),
+    resendVerification: vi.fn().mockResolvedValue(undefined),
+    isVerificationLinkValid: vi.fn().mockResolvedValue(true),
+    isResetLinkValid: vi.fn().mockResolvedValue(true),
     ...overrides,
   }
 }

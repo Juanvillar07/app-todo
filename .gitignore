@@ -26,6 +26,7 @@ dist/
 !*.tfvars.example
 crash.log
 tfplan
+*.tfplan
 # .terraform.lock.hcl SÍ se versiona
 
 # IDE / SO

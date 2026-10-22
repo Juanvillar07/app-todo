@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     email_from: str = "Tareas <onboarding@resend.dev>"
     # URL pública del frontend, para los enlaces de los correos.
     app_url: str = "http://localhost:5173"
-    password_reset_minutes: int = 60
+    password_reset_minutes: int = 2
+    email_verification_hours: int = 24
 
     @property
     def cors_origins_list(self) -> list[str]:

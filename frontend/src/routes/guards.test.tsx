@@ -23,6 +23,7 @@ const user = {
   email: 'ana@example.com',
   full_name: 'Ana',
   is_active: true,
+  email_verified: true,
   created_at: '2026-10-18T00:00:00Z',
 }
 

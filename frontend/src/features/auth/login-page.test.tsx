@@ -48,6 +48,19 @@ describe('LoginPage', () => {
     expect(password).toHaveAttribute('type', 'password')
   })
 
+  it('con el email sin confirmar ofrece reenviar el enlace', async () => {
+    const auth = fakeAuth({
+      login: vi.fn().mockRejectedValue(new ApiError(403, 'Confirma tu email para entrar')),
+    })
+    renderRoutes(routes, '/login', auth)
+    await userEvent.type(screen.getByLabelText('Email'), 'ana@example.com')
+    await userEvent.type(screen.getByLabelText('Contraseña'), 'secreto123')
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+    expect(await screen.findByRole('heading', { name: 'Confirma tu email' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Reenviar enlace' }))
+    expect(auth.resendVerification).toHaveBeenCalledWith('ana@example.com')
+  })
+
   it('muestra el error del servidor', async () => {
     const auth = fakeAuth({
       login: vi.fn().mockRejectedValue(new ApiError(401, 'Email o contraseña incorrectos')),
@@ -71,7 +84,7 @@ describe('RegisterPage', () => {
     expect(auth.register).not.toHaveBeenCalled()
   })
 
-  it('registra con nombre vacío como null y entra', async () => {
+  it('registra con nombre vacío como null y pide confirmar el email', async () => {
     const auth = fakeAuth()
     renderRoutes(routes, '/register', auth)
     await userEvent.type(screen.getByLabelText('Email'), 'ana@example.com')
@@ -82,6 +95,11 @@ describe('RegisterPage', () => {
       password: 'secreto123',
       full_name: null,
     })
-    expect(await screen.findByText('inicio')).toBeInTheDocument()
+    // Sin sesión hasta confirmar: se queda en "Revisa tu correo" y puede reenviar el enlace.
+    expect(await screen.findByRole('heading', { name: 'Revisa tu correo' })).toBeInTheDocument()
+    expect(screen.queryByText('inicio')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Reenviar enlace' }))
+    expect(auth.resendVerification).toHaveBeenCalledWith('ana@example.com')
+    expect(await screen.findByRole('button', { name: 'Enlace reenviado' })).toBeDisabled()
   })
 })

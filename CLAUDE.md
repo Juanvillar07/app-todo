@@ -56,6 +56,8 @@ terraform init -backend=false             # para validar sin credenciales ni bac
 - **Aislamiento por usuario:** cada consulta filtra por el `user_id` del token. Recurso de otro usuario → **404**, nunca 403.
 - Esquemas separados por recurso: `XCreate`, `XUpdate` (todo opcional), `XPublic`. Nunca exponer `hashed_password`.
 - Configuración solo por variables de entorno (`pydantic-settings`): `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRE_MINUTES`, `CORS_ORIGINS`, y para el correo (Resend) `RESEND_API_KEY`, `EMAIL_FROM`, `APP_URL`.
+- Verificación de email (`User.email_verified_at`, `email_verified` en `UserPublic`): **obligatoria para entrar**. El registro no abre sesión y envía el enlace; el login responde 403 sin verificar y `get_session_user` ignora sesiones de cuentas sin verificar. Al confirmar (`/verify-email`) se abre sesión. Se marca también al entrar con Google y al completar un reset de contraseña. Enlazar Google a una cuenta sin verificar anula su contraseña.
+- Enlaces del correo (`/verify-email`, `/reset-password`): el token se quita de la URL y se valida al abrir la página con `POST …/validate`, que no lo gasta (`useLinkToken`).
 - Correo: `send_email()` de `core/email.py`, siempre desde `BackgroundTasks`. Sin `RESEND_API_KEY` no envía y escribe el correo en el log (desarrollo local). Plantillas HTML en `app/templates/`.
 - Esquema de BD solo con migraciones de Alembic; nunca `create_all` (los tests también migran con Alembic). Nuevos modelos se importan en `app/models/__init__.py`.
 - `JWT_SECRET` debe tener al menos 32 caracteres. OpenAPI/Swagger en `/api/docs`.

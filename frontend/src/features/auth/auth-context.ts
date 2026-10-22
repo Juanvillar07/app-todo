@@ -11,6 +11,7 @@ export type AuthContextValue = {
   status: AuthStatus
   user: User | null
   login: (email: string, password: string) => Promise<void>
+  /** Crea la cuenta y envía el enlace de verificación. No abre sesión hasta confirmar el email. */
   register: (data: RegisterInput) => Promise<void>
   /** Entrar o registrarse con el ID token que devuelve el botón de Google. */
   loginWithGoogle: (credential: string) => Promise<void>
@@ -21,6 +22,13 @@ export type AuthContextValue = {
   requestPasswordReset: (email: string) => Promise<void>
   /** Pone la contraseña nueva con el token del enlace. El backend cierra todas las sesiones. */
   resetPassword: (token: string, password: string) => Promise<void>
+  /** Confirma el email con el token del enlace y abre sesión. */
+  verifyEmail: (token: string) => Promise<void>
+  /** Reenvía el enlace de verificación (responde igual exista o no la cuenta). */
+  resendVerification: (email: string) => Promise<void>
+  /** Si un enlace del correo sigue valiendo, sin gastarlo (false si caducó o ya se usó). */
+  isVerificationLinkValid: (token: string) => Promise<boolean>
+  isResetLinkValid: (token: string) => Promise<boolean>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

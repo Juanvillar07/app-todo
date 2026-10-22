@@ -43,7 +43,8 @@ def get_session_user(db: Session, token: str) -> tuple[User, bool] | None:
     if session is None or session.expires_at <= now:
         return None
     user = db.get(User, session.user_id)
-    if user is None or not user.is_active:
+    # Sin email verificado no se entra (también invalida sesiones abiertas antes de exigirlo).
+    if user is None or not user.is_active or not user.email_verified:
         return None
 
     # Renovación deslizante: cuando queda menos de la mitad de la vida, se alarga otra vez entera.

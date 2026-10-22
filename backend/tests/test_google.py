@@ -49,23 +49,18 @@ def test_same_google_account_is_the_same_user(client):
     assert len(client.get("/api/statuses").json()) == 3  # sin duplicar estados
 
 
-def test_google_links_existing_email_account(client):
-    register(client, email="ana@gmail.com")
-    old_token = client.cookies[COOKIE_NAME]
-    client.post("/api/tasks", json={"title": "Creada con contraseña"})
-    user_id = client.get("/api/users/me").json()["id"]
+def test_google_links_existing_unverified_account(client):
+    user_id = register(client, email="ana@gmail.com").json()["id"]
 
-    client.cookies.clear()
     r = google_login(client, google_credential(email="ana@gmail.com"))
+    assert r.status_code == 200
     assert r.json()["id"] == user_id
-    tasks = client.get("/api/tasks").json()["items"]
-    assert [t["title"] for t in tasks] == ["Creada con contraseña"]
+    assert r.json()["email_verified"] is True
 
-    # Quien creó la cuenta con ese email pudo no ser su dueño: se anulan contraseña y sesiones.
-    assert login(client, email="ana@gmail.com").status_code == 401
+    # Quien creó la cuenta con ese email pudo no ser su dueño (nunca confirmó el email): se anula
+    # su contraseña y solo se entra con Google.
     client.cookies.clear()
-    client.cookies.set(COOKIE_NAME, old_token)
-    assert client.get("/api/users/me").status_code == 401
+    assert login(client, email="ana@gmail.com").status_code == 401
     with Session(engine) as db:
         user = db.exec(select(User).where(User.email == "ana@gmail.com")).one()
         assert user.google_sub == "google-sub-ana"

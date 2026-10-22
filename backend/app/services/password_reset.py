@@ -21,6 +21,7 @@ from app.core.sessions import delete_user_sessions
 from app.db import engine
 from app.models import PasswordReset, User
 from app.models.common import utcnow
+from app.services.email_verification import mark_verified
 from app.services.users import get_by_email
 
 # Un enlace por minuto como mucho por usuario: evita usar el formulario para inundar un buzón.
@@ -75,20 +76,30 @@ def send_reset_link(email: str) -> None:
     send_email(recipient, subject, html, text)
 
 
-def reset_password(db: Session, token: str, password: str) -> User | None:
-    """Pone la contraseña nueva si el token es válido. Anula todos los enlaces del usuario y cierra
-    todas sus sesiones. None si el token no existe o ha caducado."""
+def find_valid_user(db: Session, token: str) -> User | None:
+    """Usuario del enlace si el token existe, no ha caducado y la cuenta está activa. No lo gasta:
+    sirve para que la página del enlace diga al abrirse si sigue valiendo."""
     reset = db.get(PasswordReset, hash_token(token))
     if reset is None or reset.expires_at <= utcnow():
         return None
     user = db.get(User, reset.user_id)
     if user is None or not user.is_active:
         return None
+    return user
+
+
+def reset_password(db: Session, token: str, password: str) -> User | None:
+    """Pone la contraseña nueva si el token es válido. Anula todos los enlaces del usuario y cierra
+    todas sus sesiones. None si el token no existe o ha caducado."""
+    user = find_valid_user(db, token)
+    if user is None:
+        return None
 
     user.hashed_password = hash_password(password)
     db.add(user)
     db.exec(delete(PasswordReset).where(PasswordReset.user_id == user.id))
     delete_user_sessions(db, user)
+    mark_verified(db, user)  # el enlace llegó a su buzón: el email es suyo
     db.commit()
     db.refresh(user)
     return user

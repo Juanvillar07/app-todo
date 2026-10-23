@@ -20,6 +20,7 @@ import { CheckIcon, GripVerticalIcon, MoreHorizontalIcon, PlusIcon } from 'lucid
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { ErrorState } from '@/components/error-state'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import {
@@ -95,7 +96,14 @@ export function StatusesPage() {
         description="Las columnas de tu tablero. Arrastra para cambiar el orden."
       />
 
-      {statuses.isPending ? (
+      {statuses.isError ? (
+        <ErrorState
+          title="No se pudieron cargar tus estados"
+          error={statuses.error}
+          onRetry={() => void statuses.refetch()}
+          retrying={statuses.isFetching}
+        />
+      ) : statuses.isPending ? (
         <div className="space-y-2">
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-10 w-full" />

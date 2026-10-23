@@ -122,13 +122,23 @@ def delete_status(
         ).all()
     )
 
+    # Las tareas borradas (borrado suave) no cuentan, pero también se mueven: así, si se
+    # restauran, tienen un estado válido.
+    active = [t for t in tasks if t.deleted_at is None]
+
     target: TaskStatus | None = None
     if move_to is not None:
         if move_to == status.id:
             raise BadRequestError("El estado destino debe ser distinto al que borras")
         target = get_status(session, user, move_to)
-    elif tasks:
+    elif active:
         raise BadRequestError("El estado tiene tareas: indica move_to con el estado destino")
+    else:
+        # Solo quedan tareas borradas y no hay destino: se eliminan de verdad (la FK lo exige).
+        for task in tasks:
+            session.delete(task)
+        session.flush()
+        tasks = []
 
     if target is not None and tasks:
         next_position = next_task_position(session, user.id, target.id)

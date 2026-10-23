@@ -8,6 +8,7 @@ export function fakeAuth(overrides: Partial<AuthContextValue> = {}): AuthContext
   return {
     status: 'anonymous',
     user: null,
+    retrySession: vi.fn(),
     login: vi.fn().mockResolvedValue(undefined),
     register: vi.fn().mockResolvedValue(undefined),
     loginWithGoogle: vi.fn().mockResolvedValue(undefined),

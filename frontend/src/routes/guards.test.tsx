@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { RouteObject } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import { fakeAuth, renderRoutes } from '@/test/render'
@@ -26,6 +27,17 @@ const user = {
   email_verified: true,
   created_at: '2026-10-18T00:00:00Z',
 }
+
+describe('Sin conexión con el backend', () => {
+  it('muestra un error con Reintentar en vez de mandar al login', async () => {
+    const auth = fakeAuth({ status: 'error' })
+    renderRoutes(routes, '/', auth)
+    expect(await screen.findByText('No se pudo conectar con el servidor')).toBeInTheDocument()
+    expect(screen.queryByText('pantalla de login')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
+    expect(auth.retrySession).toHaveBeenCalled()
+  })
+})
 
 describe('ProtectedRoute', () => {
   it('redirige a /login sin sesión y recuerda la ruta', () => {

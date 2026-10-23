@@ -54,7 +54,14 @@ def update_task(task_id: uuid.UUID, data: TaskUpdate, session: SessionDep, user:
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(task_id: uuid.UUID, session: SessionDep, user: CurrentUser):
+    """Borrado suave: se puede deshacer con POST /tasks/{id}/restore durante 7 días."""
     tasks.delete_task(session, user, task_id)
+
+
+@router.post("/{task_id}/restore", response_model=TaskPublic)
+def restore_task(task_id: uuid.UUID, session: SessionDep, user: CurrentUser):
+    """Deshace el borrado de una tarea y la devuelve a su sitio en la columna."""
+    return tasks.restore_task(session, user, task_id)
 
 
 @router.patch("/{task_id}/move", response_model=TaskPublic)

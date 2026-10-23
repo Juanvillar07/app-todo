@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from enum import StrEnum
 
-from sqlalchemy import Column, Index, Text
+from sqlalchemy import Column, DateTime, Index, Text
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, SQLModel
 
@@ -45,3 +45,8 @@ class Task(SQLModel, table=True):
     position: int = 0
     created_at: datetime = Field(default_factory=utcnow, sa_column=timestamp_column())
     updated_at: datetime = Field(default_factory=utcnow, sa_column=timestamp_column())
+    # Borrado suave: la tarea desaparece de todas partes pero se puede restaurar ("Deshacer").
+    # Las borradas hace más de PURGE_AFTER se eliminan de verdad (services/tasks.py).
+    deleted_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )

@@ -3,13 +3,17 @@ import type { User } from '@/lib/api'
 
 export const meQueryKey = ['me'] as const
 
-export type AuthStatus = 'loading' | 'authenticated' | 'anonymous'
+// 'error': no se pudo preguntar al backend si hay sesión (caído, sin red…). No es lo mismo que
+// no tener sesión: se muestra un error con "Reintentar" en vez del login.
+export type AuthStatus = 'loading' | 'authenticated' | 'anonymous' | 'error'
 
 export type RegisterInput = { email: string; password: string; full_name?: string | null }
 
 export type AuthContextValue = {
   status: AuthStatus
   user: User | null
+  /** Vuelve a preguntar al backend por la sesión (tras un status 'error'). */
+  retrySession: () => void
   login: (email: string, password: string) => Promise<void>
   /** Crea la cuenta y envía el enlace de verificación. No abre sesión hasta confirmar el email. */
   register: (data: RegisterInput) => Promise<void>

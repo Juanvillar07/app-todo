@@ -62,6 +62,7 @@ terraform init -backend=false             # para validar sin credenciales ni bac
 - Esquema de BD solo con migraciones de Alembic; nunca `create_all` (los tests también migran con Alembic). Nuevos modelos se importan en `app/models/__init__.py`.
 - `JWT_SECRET` debe tener al menos 32 caracteres. OpenAPI/Swagger en `/api/docs`.
 - Rutas delgadas; la lógica de negocio va en `services/`.
+- Tareas con **borrado suave** (`Task.deleted_at`): `DELETE` las oculta de todas partes (404 en el GET), `POST /tasks/{id}/restore` las devuelve a su sitio y se purgan a los 7 días. Toda consulta nueva sobre tareas debe filtrar `deleted_at IS NULL`.
 - Tests con pytest contra un Postgres real (el de docker compose / servicio en CI).
 
 ## Convenciones del frontend — UI limpia y minimalista
@@ -76,7 +77,9 @@ terraform init -backend=false             # para validar sin credenciales ni bac
 - Llamadas a la API con TanStack Query usando el cliente tipado `api` + `unwrap()` de `lib/api.ts` (openapi-fetch). Tras cambiar la API, `npm run gen:api` y commit del `.d.ts`.
 - Formularios con React Hook Form + Zod y los componentes `Field*` de shadcn.
 - Sesión: `useAuth()` (`features/auth`). Tema: `useTheme()` de `components/theme-context` (sin next-themes).
-- Datos de tareas y estados: hooks de `features/tasks/queries.ts` (claves en `keys`). Mover en el kanban usa `useMoveTask()`, que actualiza la caché de forma optimista y revierte si falla.
+- Datos de tareas y estados: hooks de `features/tasks/queries.ts` (claves en `keys`). Mover en el kanban usa `useMoveTask()`, que actualiza la caché de forma optimista y revierte si falla. Borrar (`useDeleteTask`) también es optimista y el toast ofrece "Deshacer" (`useRestoreTask`).
+- Errores de carga con `ErrorState` (`components/error-state.tsx`, botón Reintentar), siempre antes que el estado vacío. Si no se puede comprobar la sesión, `useAuth().status` es `'error'` y los guards muestran el error en vez del login.
+- El Sheet de tarea avisa de cambios sin guardar con `useBlocker` (cubre Esc, clic fuera, Cancelar y Atrás) y `beforeunload`.
 - Estado en la URL: el Sheet de tarea se abre con `?task=<id>` / `?task=new&task_status=<id>` y los filtros de la lista son `q`, `status`, `priority`, `sort`, `page`.
 - Las pantallas de tareas se cargan con `lazy` en `routes/router.tsx`; `RouteError` cubre errores de ruta (p. ej. chunks viejos tras un deploy).
 - Añadir componentes con `npx shadcn@latest add <nombre>`; no editar a mano `components/ui/` salvo necesidad.

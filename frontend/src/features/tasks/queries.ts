@@ -168,17 +168,64 @@ export function useUpdateTask() {
   })
 }
 
+type TaskPage = Schemas['TaskPage']
+
+// Tablero y páginas de la lista (las cachés con forma TaskPage, no el detalle de una tarea).
+const taskPages = {
+  queryKey: keys.tasks,
+  predicate: (q: { queryKey: readonly unknown[] }) =>
+    q.queryKey[1] === 'board' || q.queryKey[1] === 'list',
+}
+
+/**
+ * Borra una tarea (borrado suave en el backend, se puede deshacer con useRestoreTask). La quita
+ * de la caché del tablero y de la lista al momento; si la API falla, la vuelve a poner.
+ */
 export function useDeleteTask() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) =>
       unwrap(api.DELETE('/api/tasks/{task_id}', { params: { path: { task_id: id } } })),
-    onSuccess: (_data, id) => {
-      qc.removeQueries({ queryKey: keys.task(id) })
-      qc.invalidateQueries({ queryKey: keys.tasks })
+    onMutate: async (id) => {
+      await qc.cancelQueries(taskPages)
+      const snapshot = qc.getQueriesData<TaskPage>(taskPages)
+      qc.setQueriesData<TaskPage>(taskPages, (page) =>
+        page && page.items.some((t) => t.id === id)
+          ? { ...page, items: page.items.filter((t) => t.id !== id), total: page.total - 1 }
+          : page,
+      )
+      return { snapshot }
     },
-    onError,
+    onError: (error, _id, context) => {
+      context?.snapshot.forEach(([key, data]) => qc.setQueryData(key, data))
+      onError(error)
+    },
+    onSuccess: (_data, id) => qc.removeQueries({ queryKey: keys.task(id) }),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.tasks }),
   })
+}
+
+/**
+ * Deshace el borrado de una tarea. Es una función y no una mutación de componente: se llama
+ * desde el toast "Deshacer", cuando el Sheet de la tarea ya se ha cerrado.
+ */
+export function useRestoreTask() {
+  const qc = useQueryClient()
+  return useCallback(
+    async (id: string) => {
+      try {
+        await unwrap(
+          api.POST('/api/tasks/{task_id}/restore', { params: { path: { task_id: id } } }),
+        )
+        toast.success('Tarea restaurada')
+      } catch (error) {
+        onError(error as Error)
+      } finally {
+        void qc.invalidateQueries({ queryKey: keys.tasks })
+      }
+    },
+    [qc],
+  )
 }
 
 /** Aplica un movimiento a la lista del tablero: cambia el estado y renumera ambas columnas. */

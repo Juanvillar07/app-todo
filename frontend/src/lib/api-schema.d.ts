@@ -345,12 +345,35 @@ export interface paths {
         get: operations["read_task_api_tasks__task_id__get"];
         put?: never;
         post?: never;
-        /** Delete Task */
+        /**
+         * Delete Task
+         * @description Borrado suave: se puede deshacer con POST /tasks/{id}/restore durante 7 días.
+         */
         delete: operations["delete_task_api_tasks__task_id__delete"];
         options?: never;
         head?: never;
         /** Update Task */
         patch: operations["update_task_api_tasks__task_id__patch"];
+        trace?: never;
+    };
+    "/api/tasks/{task_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore Task
+         * @description Deshace el borrado de una tarea y la devuelve a su sitio en la columna.
+         */
+        post: operations["restore_task_api_tasks__task_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/tasks/{task_id}/move": {
@@ -1285,6 +1308,37 @@ export interface operations {
                 "application/json": components["schemas"]["TaskUpdate"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskPublic"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_task_api_tasks__task_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

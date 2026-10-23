@@ -130,12 +130,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const status: AuthStatus = me.isPending ? 'loading' : me.data ? 'authenticated' : 'anonymous'
+  const status: AuthStatus = me.isPending
+    ? 'loading'
+    : me.isError && me.data === undefined
+      ? 'error'
+      : me.data
+        ? 'authenticated'
+        : 'anonymous'
+
+  const retrySession = useCallback(() => {
+    void me.refetch()
+    void config.refetch()
+  }, [me, config])
 
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
       user: me.data ?? null,
+      retrySession,
       login,
       register,
       loginWithGoogle,
@@ -151,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [
       status,
       me.data,
+      retrySession,
       login,
       register,
       loginWithGoogle,

@@ -1,6 +1,7 @@
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, SearchIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
+import { ErrorState } from '@/components/error-state'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -156,7 +157,15 @@ export function ListPage() {
         </Select>
       </div>
 
-      {tasks.isPending ? (
+      {tasks.isError ? (
+        // Antes que el estado vacío: un fallo de la API no es "no tienes tareas".
+        <ErrorState
+          title="No se pudieron cargar tus tareas"
+          error={tasks.error}
+          onRetry={() => void tasks.refetch()}
+          retrying={tasks.isFetching}
+        />
+      ) : tasks.isPending ? (
         <div className="space-y-2">
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-11 w-full" />

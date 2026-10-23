@@ -1,7 +1,8 @@
 import uuid
+from datetime import timedelta
 
 from sqlalchemy import case, or_
-from sqlmodel import Session, func, select
+from sqlmodel import Session, delete, func, select
 
 from app.core.errors import NotFoundError
 from app.models import Priority, Task, User
@@ -16,6 +17,9 @@ PRIORITY_RANK = case(
     value=Task.priority,
 )
 
+# Las tareas borradas se pueden restaurar durante este tiempo; después se eliminan de verdad.
+PURGE_AFTER = timedelta(days=7)
+
 SORT_COLUMNS = {
     "position": Task.position,
     "created_at": Task.created_at,
@@ -27,8 +31,9 @@ SORT_COLUMNS = {
 
 
 def get_task(session: Session, user: User, task_id: uuid.UUID) -> Task:
+    """Tarea activa del usuario. Una borrada (borrado suave) es como si no existiera: 404."""
     task = session.get(Task, task_id)
-    if task is None or task.user_id != user.id:
+    if task is None or task.user_id != user.id or task.deleted_at is not None:
         raise NotFoundError("Tarea no encontrada")
     return task
 
@@ -44,7 +49,7 @@ def list_tasks(
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list[Task], int]:
-    filters = [Task.user_id == user.id]
+    filters = [Task.user_id == user.id, Task.deleted_at.is_(None)]
     if status_id is not None:
         filters.append(Task.status_id == status_id)
     if priority:
@@ -104,15 +109,45 @@ def update_task(session: Session, user: User, task_id: uuid.UUID, data: TaskUpda
 
 
 def delete_task(session: Session, user: User, task_id: uuid.UUID) -> None:
+    """Borrado suave: la tarea sale de la columna (que se renumera) y se puede restaurar."""
     task = get_task(session, user, task_id)
-    session.delete(task)
+    now = utcnow()
+    # De paso, elimina de verdad las que este usuario borró hace más de PURGE_AFTER.
+    session.exec(delete(Task).where(Task.user_id == user.id, Task.deleted_at <= now - PURGE_AFTER))
+    task.deleted_at = now
+    session.add(task)
+    for position, t in enumerate(_column(session, user, task.status_id, exclude=task.id)):
+        t.position = position
+        session.add(t)
     session.commit()
+
+
+def restore_task(session: Session, user: User, task_id: uuid.UUID) -> Task:
+    """Deshace un borrado: la tarea vuelve a su sitio en su columna."""
+    task = session.get(Task, task_id)
+    if task is None or task.user_id != user.id or task.deleted_at is None:
+        raise NotFoundError("Tarea no encontrada")
+    # Su sitio: delante de las tareas activas que estaban detrás de ella.
+    index = sum(
+        1
+        for t in _column(session, user, task.status_id, exclude=task.id)
+        if t.position < task.position
+    )
+    task.deleted_at = None
+    session.add(task)
+    session.flush()
+    return move_task(session, user, task.id, TaskMove(status_id=task.status_id, position=index))
 
 
 def _column(session: Session, user: User, status_id: uuid.UUID, exclude: uuid.UUID) -> list[Task]:
     query = (
         select(Task)
-        .where(Task.user_id == user.id, Task.status_id == status_id, Task.id != exclude)
+        .where(
+            Task.user_id == user.id,
+            Task.status_id == status_id,
+            Task.id != exclude,
+            Task.deleted_at.is_(None),
+        )
         .order_by(Task.position, Task.created_at)
     )
     return list(session.exec(query).all())

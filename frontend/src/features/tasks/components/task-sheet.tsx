@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Trash2Icon } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
+import { type Location, useBlocker } from 'react-router'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -13,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { ErrorState } from '@/components/error-state'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -27,6 +29,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { ApiError } from '@/lib/api'
 import { PRIORITIES } from '../priority'
 import { type TaskFormValues, taskSchema } from '../schemas'
 import {
@@ -34,6 +37,7 @@ import {
   type TaskStatus,
   useCreateTask,
   useDeleteTask,
+  useRestoreTask,
   useStatuses,
   useTask,
   useUpdateTask,
@@ -42,6 +46,7 @@ import { useTaskSheet } from '../use-task-sheet'
 import { Markdown } from './markdown'
 import { PriorityLabel, StatusDot } from './task-meta'
 
+const taskParam = (location: Location) => new URLSearchParams(location.search).get('task')
 
 function toFormValues(task: Task | undefined, statusId: string): TaskFormValues {
   return {
@@ -65,15 +70,51 @@ export function TaskSheet() {
 
   const ready = statuses.data && defaultStatus && (sheet.isNew || task.data)
 
+  // Cambios sin guardar. El Sheet se cierra cambiando la URL (Esc, clic fuera, Cancelar, botón
+  // Atrás…), así que basta con bloquear esa navegación. El ref se lee en el momento de navegar:
+  // al guardar o borrar se marca limpio justo antes de cerrar, sin esperar a un render.
+  const dirtyRef = useRef(false)
+  const [dirty, setDirty] = useState(false)
+  const onDirtyChange = useCallback((value: boolean) => {
+    dirtyRef.current = value
+    setDirty(value)
+  }, [])
+
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      dirtyRef.current &&
+      (currentLocation.pathname !== nextLocation.pathname ||
+        taskParam(currentLocation) !== taskParam(nextLocation)),
+  )
+
+  // Cerrar la pestaña o recargar: el navegador pregunta.
+  useEffect(() => {
+    if (!dirty) return
+    const onBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault()
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [dirty])
+
+  const notFound = task.error instanceof ApiError && task.error.status === 404
+
   return (
+    <>
     <Sheet open={sheet.isOpen} onOpenChange={(open) => !open && sheet.close()}>
       <SheetContent className="w-full gap-0 data-[side=right]:sm:max-w-xl">
         <SheetTitle className="sr-only">{sheet.isNew ? 'Nueva tarea' : 'Editar tarea'}</SheetTitle>
         <SheetDescription className="sr-only">
           Título, estado, prioridad, fecha límite y descripción de la tarea.
         </SheetDescription>
-        {task.isError ? (
+        {notFound ? (
           <p className="p-6 text-sm text-muted-foreground">Esta tarea no existe o fue eliminada.</p>
+        ) : task.isError ? (
+          <ErrorState
+            title="No se pudo cargar la tarea"
+            error={task.error}
+            onRetry={() => void task.refetch()}
+            retrying={task.isFetching}
+            className="pt-24"
+          />
         ) : ready ? (
           <TaskForm
             // Re-monta el formulario al cambiar de tarea para partir de sus valores.
@@ -82,6 +123,7 @@ export function TaskSheet() {
             statuses={statuses.data}
             defaultValues={toFormValues(sheet.isNew ? undefined : task.data, defaultStatus.id)}
             onDone={sheet.close}
+            onDirtyChange={onDirtyChange}
           />
         ) : (
           <div className="space-y-4 p-6 pt-14">
@@ -92,6 +134,33 @@ export function TaskSheet() {
         )}
       </SheetContent>
     </Sheet>
+
+      <AlertDialog
+        open={blocker.state === 'blocked'}
+        onOpenChange={(open) => !open && blocker.state === 'blocked' && blocker.reset()}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Descartar los cambios?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tienes cambios sin guardar en esta tarea. Si sales, se perderán.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => blocker.reset?.()}>Seguir editando</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                onDirtyChange(false)
+                blocker.proceed?.()
+              }}
+            >
+              Descartar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
@@ -100,22 +169,36 @@ function TaskForm({
   statuses,
   defaultValues,
   onDone,
+  onDirtyChange,
 }: {
   task?: Task
   statuses: TaskStatus[]
   defaultValues: TaskFormValues
   onDone: () => void
+  onDirtyChange: (dirty: boolean) => void
 }) {
   const create = useCreateTask()
   const update = useUpdateTask()
   const remove = useDeleteTask()
+  const restore = useRestoreTask()
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
     defaultValues,
   })
-  const { errors, isSubmitting } = form.formState
+  const { errors, isSubmitting, isDirty } = form.formState
+
+  useEffect(() => {
+    onDirtyChange(isDirty)
+  }, [isDirty, onDirtyChange])
+  useEffect(() => () => onDirtyChange(false), [onDirtyChange])
+
+  /** Cierra sin preguntar (tras guardar o borrar ya no hay nada que perder). */
+  const finish = () => {
+    onDirtyChange(false)
+    onDone()
+  }
 
   const onSubmit = form.handleSubmit(async (values) => {
     const body = {
@@ -130,14 +213,23 @@ function TaskForm({
       await create.mutateAsync(body)
       toast.success('Tarea creada')
     }
-    onDone()
+    finish()
   })
 
-  const onDelete = async () => {
+  const onDelete = () => {
     if (!task) return
-    await remove.mutateAsync(task.id)
-    toast.success('Tarea eliminada')
-    onDone()
+    const { id } = task
+    finish()
+    // Desaparece al momento (optimista); si la API falla, vuelve y sale un error.
+    remove
+      .mutateAsync(id)
+      .then(() =>
+        toast('Tarea eliminada', {
+          duration: 8000,
+          action: { label: 'Deshacer', onClick: () => void restore(id) },
+        }),
+      )
+      .catch(() => {})
   }
 
   return (
@@ -272,7 +364,7 @@ function TaskForm({
         <AlertDialogContent size="sm">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar la tarea?</AlertDialogTitle>
-            <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+            <AlertDialogDescription>Podrás deshacerlo durante unos segundos.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>

@@ -19,6 +19,7 @@ import {
 } from '@dnd-kit/sortable'
 import { PlusIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { ErrorState } from '@/components/error-state'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -124,6 +125,7 @@ export function BoardPage() {
 
   const activeTask = activeId ? tasksById.get(activeId) : undefined
   const loading = statuses.isPending || board.isPending
+  const loadError = statuses.error ?? board.error
 
   return (
     <>
@@ -138,7 +140,17 @@ export function BoardPage() {
         }
       />
 
-      {loading ? (
+      {loadError ? (
+        <ErrorState
+          title="No se pudo cargar el tablero"
+          error={loadError}
+          onRetry={() => {
+            void statuses.refetch()
+            void board.refetch()
+          }}
+          retrying={statuses.isFetching || board.isFetching}
+        />
+      ) : loading ? (
         <div className="flex gap-6">
           {[0, 1, 2].map((i) => (
             <div key={i} className="w-72 shrink-0 space-y-3">
